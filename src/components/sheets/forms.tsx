@@ -628,3 +628,73 @@ export function DebtPayForm({ debtId }: { debtId: string }) {
     </SheetFrame>
   );
 }
+
+/* ------------------------------------------------------------ real start */
+
+/** Leaves the example data: the user enters the few figures the app needs to start. */
+export function StartForm() {
+  const { state, startFresh, closeSheet } = useApp();
+  const [name, setName] = useState(state.settings.name || '');
+  const [balance, setBalance] = useState('');
+  const [salary, setSalary] = useState('');
+  const [payDay, setPayDay] = useState('');
+  const [life, setLife] = useState('');
+  return (
+    <SheetFrame
+      title="Mes vraies données"
+      submitLabel="Commencer"
+      onSubmit={() => {
+        const b = parseAmount(balance);
+        const sal = parseAmount(salary);
+        const d = parseInt(payDay, 10);
+        const l = parseAmount(life);
+        if (!Number.isFinite(b)) return 'Entre le solde de ton compte courant (il peut être négatif, ex. -45,20).';
+        if (!(sal > 0)) return 'Entre ton salaire net, par ex. 1850.';
+        if (!(d >= 1 && d <= 31)) return 'Le jour de paie va de 1 à 31.';
+        if (!(l >= 0)) return 'Entre ton budget de vie par mois (courses, essence, sorties), par ex. 500.';
+        startFresh({ name, balance: b, salary: sal, payDay: d, lifeBudget: l });
+        closeSheet();
+      }}
+    >
+      <Banner>
+        {`${state.demo ? 'Les données d’exemple sont effacées.' : 'Tout ce que tu as saisi jusqu’ici est effacé.'} Tout reste sur ton téléphone, rien n’est envoyé ailleurs.`}
+      </Banner>
+      <Field label="Prénom" value={name} onChangeText={setName} autoCapitalize="words" placeholder="Joey" />
+      <AmountField label="Solde de ton compte courant aujourd’hui (€)" value={balance} onChangeText={setBalance} placeholder="ex. 845,30" keyboardType="numbers-and-punctuation" inputMode="text" />
+      <AmountField label="Salaire net par mois (€)" value={salary} onChangeText={setSalary} placeholder="ex. 1850" />
+      <Field label="Jour de paie (1 à 31)" value={payDay} onChangeText={setPayDay} keyboardType="number-pad" inputMode="numeric" placeholder="ex. 28" />
+      <AmountField label="Budget de vie par mois (€)" value={life} onChangeText={setLife} placeholder="ex. 500" />
+      <Tip>
+        Ensuite : ajoute tes charges (loyer, abonnements…) dans Budget, tes dettes et objectifs dans Pockets. Les charges sont débitées
+        automatiquement à leur date, et le jour de paie l’appli te demande ce que tu as reçu pour le répartir.
+      </Tip>
+    </SheetFrame>
+  );
+}
+
+/** Aligns the app with the real bank balance. */
+export function BalanceForm() {
+  const { state, update, closeSheet } = useApp();
+  const [value, setValue] = useState(amountInput(state.balance));
+  return (
+    <SheetFrame
+      title="Corriger le solde"
+      onSubmit={() => {
+        const v = parseAmount(value);
+        if (!Number.isFinite(v)) return 'Entre le solde affiché par ta banque, par ex. 845,30.';
+        const diff = r2(v - state.balance);
+        if (diff === 0) return closeSheet();
+        update((s) => {
+          s.balance = r2(v);
+          // A correction is neither income nor spending: kept out of the stats
+          addTx(s, 'Correction du solde', diff, 'courant', 'manuel', undefined, { transfer: true });
+        }, 'Solde corrigé');
+        closeSheet();
+      }}
+    >
+      <Banner>{`Solde dans l’appli : ${eur(state.balance)}. Mets le montant affiché par ta banque.`}</Banner>
+      <AmountField label="Solde réel du compte courant (€)" value={value} onChangeText={setValue} autoFocus keyboardType="numbers-and-punctuation" inputMode="text" />
+      <Tip>Pense plutôt à ajouter tes dépenses avec le + : elles comptent dans tes enveloppes et tes stats, pas une correction.</Tip>
+    </SheetFrame>
+  );
+}

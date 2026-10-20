@@ -4,11 +4,11 @@ import { router } from 'expo-router';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { useApp } from '../store/AppStore';
 import {
-  Banner, Breathe, Btn, Card, DateBadge, Expandable, Eyebrow, IconButton, KV, List, ListRow, Pill, Rise, Screen, Section, SplitBar, Sub, Tip, Txt,
+  AmountField, Banner, Breathe, Btn, Card, DateBadge, Expandable, Eyebrow, IconButton, KV, List, ListRow, Pill, Rise, Screen, Section, SplitBar, Sub, Tip, Txt,
 } from '../ui/kit';
 import { useColors } from '../ui/theme';
-import { STATUS_LABEL, compute, previewPayday, simulatePayday } from '../domain/engine';
-import { dateLong, dateShort, eur, parseYmd, r2 } from '../domain/format';
+import { STATUS_LABEL, compute, paydayDue, previewPayday, receivePayday, simulatePayday } from '../domain/engine';
+import { amountInput, dateLong, dateShort, eur, parseAmount, parseYmd, r2 } from '../domain/format';
 import type { Allocation } from '../domain/types';
 
 const LIFE_COLOR = '#4A4A55';
@@ -19,12 +19,16 @@ export default function Paie() {
   const { state: s, update } = useApp();
   const c = useColors();
   const [done, setDone] = useState(false);
+  const [received, setReceived] = useState(amountInput(s.settings.salary));
   const k = compute(s);
-  const pv = previewPayday(s);
+  const due = paydayDue(s);
+  const salary = parseAmount(received);
+  const pv = previewPayday(s, due && salary > 0 ? salary : undefined);
   const a: Allocation = done && s.allocations[0] ? s.allocations[0] : pv;
   const bonus = r2(Math.max(0, a.marge - a.setAside));
   const hasDebts = s.debts.some((d) => d.remaining > 0);
-  const day = done ? dateLong(parseYmd(a.date)) : dateLong(k.pay);
+  const day = dateLong(done ? parseYmd(a.date) : (due ?? k.pay));
+  const label = done ? 'paie reçue' : due ? 'jour de paie' : 'prochaine paie';
 
   const rows = [
     { label: 'Factures du mois', sub: 'Loyer, abonnements, énergie…', value: a.toBills, color: c.bill },
@@ -62,7 +66,7 @@ export default function Paie() {
       }
     >
       <Rise order={1} style={{ alignItems: 'center', gap: 6, marginTop: -8 }}>
-        <Eyebrow color="ok">{`${day} · ${done ? 'paie reçue' : 'prochaine paie'}`}</Eyebrow>
+        <Eyebrow color="ok">{`${day} · ${label}`}</Eyebrow>
         <Txt style={{ fontSize: 46, fontWeight: '800', letterSpacing: -2, fontVariant: ['tabular-nums'] }} adjustsFontSizeToFit numberOfLines={1}>
           {`+ ${eur(a.income)}`}
         </Txt>
@@ -112,6 +116,25 @@ export default function Paie() {
 
       {done ? (
         <Btn variant="light" title="Voir mon nouveau reste à vivre" onPress={() => router.dismissTo('/')} />
+      ) : due ? (
+        <Card style={{ gap: 12 }}>
+          <AmountField
+            label="Montant reçu sur ton compte (€)"
+            value={received}
+            onChangeText={setReceived}
+          />
+          <Btn
+            title="Répartir ma paie"
+            disabled={!(salary > 0)}
+            onPress={() => {
+              update((x) => {
+                receivePayday(x, salary);
+              }, 'Paie reçue et répartie');
+              setDone(true);
+            }}
+          />
+          <Tip>L’appli met de côté ce qu’il faut dans chaque pocket. Fais les mêmes virements dans ta banque si tes sous-comptes y sont séparés.</Tip>
+        </Card>
       ) : s.demo ? (
         <Btn
           title="Simuler le jour de paie"
@@ -123,7 +146,7 @@ export default function Paie() {
           }}
         />
       ) : (
-        <Tip>{`La répartition se fera automatiquement le ${dateShort(k.pay)}.`}</Tip>
+        <Tip>{`Le ${dateShort(k.pay)}, l’appli te demandera combien tu as reçu et la répartira comme ci-dessus.`}</Tip>
       )}
 
       <Expandable color="ok" title="Le détail du calcul" summary="Étape par étape">

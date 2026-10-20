@@ -36,19 +36,21 @@ export function HeaderActions() {
   const initial = state.settings.name?.trim().charAt(0).toUpperCase();
   return (
     <Row wrap={false} style={{ gap: 8, marginBottom: 4 }}>
-      <IconButton
-        symbol="arrow.triangle.2.circlepath"
-        fallback="↻"
-        label="Synchroniser le compte"
-        onPress={() => update((s) => { s.lastSync = new Date().toISOString(); }, 'Compte à jour (simulation)')}
-      />
+      {state.demo ? (
+        <IconButton
+          symbol="arrow.triangle.2.circlepath"
+          fallback="↻"
+          label="Synchroniser le compte"
+          onPress={() => update((s) => { s.lastSync = new Date().toISOString(); }, 'Compte à jour (simulation)')}
+        />
+      ) : null}
       <IconButton symbol="person.fill" fallback="☰" text={initial || undefined} label="Compte et réglages" onPress={() => router.push('/compte')} />
     </Row>
   );
 }
 
 export function DemoBanner() {
-  const { state } = useApp();
+  const { state, openSheet } = useApp();
   if (state.clock)
     return (
       <Banner>
@@ -63,8 +65,11 @@ export function DemoBanner() {
     <Banner>
       <Txt muted style={{ fontSize: 13 }}>
         <Txt style={{ fontSize: 13, fontWeight: '700' }}>Données d’exemple. </Txt>
-        Faux compte bunq (sandbox). Modifie ou ajoute ce que tu veux pour tester.
+        Faux compte bunq (sandbox). Teste tout ce que tu veux, puis passe à tes vrais chiffres.
       </Txt>
+      <View style={{ marginTop: 10 }}>
+        <Btn small title="Commencer avec mes vraies données" onPress={() => openSheet({ kind: 'start' })} />
+      </View>
     </Banner>
   );
 }

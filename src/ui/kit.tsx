@@ -9,7 +9,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Haptics from 'expo-haptics';
 import { CATEGORY_COLOR, CATEGORY_SYMBOL, accentGradient, alpha, geist, radius, space, useColors, type ColorName } from './theme';
 import { dateFull, parseYmd, ymd } from '../domain/format';
-import { SymbolView, type SFSymbol } from 'expo-symbols';
+import { Icon } from './Icon';
 
 export const tap = () => {
   if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
@@ -473,7 +473,22 @@ export function DateField({ label, value, onChange }: { label: string; value: st
   return (
     <View style={{ gap: 6 }}>
       <Txt muted style={{ fontSize: 13, fontWeight: '600' }}>{label}</Txt>
-      {Platform.OS === 'ios' ? (
+      {Platform.OS === 'web' ? (
+        // Web app: the browser's own date picker (the native wheel on iPhone)
+        React.createElement('input', {
+          type: 'date',
+          value,
+          'aria-label': label,
+          onChange: (e: { target: { value: string } }) => {
+            if (e.target.value) onChange(e.target.value);
+          },
+          style: {
+            colorScheme: 'dark', background: c.glass, color: c.ink, border: `1px solid ${c.glassLine}`, borderRadius: 14,
+            padding: '12px 14px', fontSize: 17, fontFamily: geist['500'], minHeight: 48, width: '100%', boxSizing: 'border-box',
+            WebkitAppearance: 'none', textAlign: 'left',
+          },
+        })
+      ) : Platform.OS === 'ios' ? (
         <View style={{ alignItems: 'flex-start' }}>
           <DateTimePicker value={date} mode="date" display="compact" locale="fr-FR" themeVariant="dark" accentColor={c.accent} onValueChange={(_, d) => onChange(ymd(d))} />
         </View>
@@ -585,7 +600,7 @@ export const Tip = ({ children }: { children: string }) => <Txt muted style={{ f
 /* ------------------------------------------------------------ additions */
 
 /** Round glass button using SF Symbols (falls back to a text glyph elsewhere). */
-export function IconButton({ symbol, fallback, label, onPress, tint, text }: { symbol?: SFSymbol; fallback?: string; label: string; onPress: () => void; tint?: string; text?: string }) {
+export function IconButton({ symbol, fallback, label, onPress, tint, text }: { symbol?: string; fallback?: string; label: string; onPress: () => void; tint?: string; text?: string }) {
   const c = useColors();
   return (
     <Pressable
@@ -606,8 +621,8 @@ export function IconButton({ symbol, fallback, label, onPress, tint, text }: { s
           <LinearGradient colors={['#2A2A33', '#16161B']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
           <Text style={{ color: c.ink, fontSize: 15, fontWeight: '700' }}>{text}</Text>
         </>
-      ) : Platform.OS === 'ios' && symbol ? (
-        <SymbolView name={symbol} size={17} tintColor={tint ?? c.ink} weight="semibold" />
+      ) : symbol ? (
+        <Icon name={symbol} size={18} color={tint ?? c.ink} weight="semibold" />
       ) : (
         <Text style={{ color: tint ?? c.ink, fontSize: 16 }}>{fallback}</Text>
       )}
@@ -676,11 +691,7 @@ export function CategoryIcon({ category, size = 36 }: { category: string; size?:
   const color = CATEGORY_COLOR[category] ?? '#55555F';
   return (
     <View style={{ width: size, height: size, borderRadius: size / 3, backgroundColor: alpha(color, 0.16), alignItems: 'center', justifyContent: 'center', borderCurve: 'continuous' }}>
-      {Platform.OS === 'ios' ? (
-        <SymbolView name={(CATEGORY_SYMBOL[category] ?? 'circle.fill') as SFSymbol} size={size * 0.46} tintColor={color} />
-      ) : (
-        <View style={{ width: size * 0.35, height: size * 0.35, borderRadius: 3, backgroundColor: color }} />
-      )}
+      <Icon name={CATEGORY_SYMBOL[category] ?? 'circle'} size={size * 0.48} color={color} weight="semibold" />
     </View>
   );
 }

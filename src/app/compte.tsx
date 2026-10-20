@@ -31,14 +31,19 @@ export default function Compte() {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <Txt style={{ color: c.ink, fontSize: 13 }}>Compte courant</Txt>
           <View style={{ borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 2, opacity: 0.85 }}>
-            <Txt style={{ color: c.ink, fontSize: 11.5 }}>{state.demo ? 'bunq · sandbox' : 'bunq'}</Txt>
+            <Txt style={{ color: c.ink, fontSize: 11.5 }}>{state.demo ? 'bunq · sandbox' : 'Saisie manuelle'}</Txt>
           </View>
         </View>
         <Txt style={{ color: c.ink, fontSize: 34, fontWeight: '800', letterSpacing: -0.5, fontVariant: ['tabular-nums'] }}>{eur(state.balance)}</Txt>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <Txt style={{ color: c.ink, fontSize: 13 }}>{mins < 1 ? "Synchronisé à l'instant" : `Synchronisé il y a ${mins < 60 ? `${mins} min` : `${Math.round(mins / 60)} h`}`}</Txt>
+          <Txt style={{ color: c.ink, fontSize: 13 }}>
+            {!state.demo ? 'Suit tes saisies' : mins < 1 ? "Synchronisé à l'instant" : `Synchronisé il y a ${mins < 60 ? `${mins} min` : `${Math.round(mins / 60)} h`}`}
+          </Txt>
           <Txt style={{ color: c.ink, fontSize: 13 }}>Total {eur(total(state))}</Txt>
         </View>
+        <Row>
+          <Btn small variant="ghost" title="Corriger le solde" onPress={() => openSheet({ kind: 'balance' })} />
+        </Row>
       </Card>
 
       <Section title="Opérations" action={<Btn small title="Ajouter" onPress={() => openSheet({ kind: 'tx' })} />}>
@@ -114,7 +119,10 @@ export default function Compte() {
             </View>
           </Banner>
         ) : (
-          <Btn variant="ghost" title="Remettre les données d'exemple" onPress={() => setConfirmReset(true)} />
+          <>
+            {!state.demo ? <Btn variant="ghost" title="Repartir de zéro" onPress={() => openSheet({ kind: 'start' })} /> : null}
+            <Btn variant="ghost" title="Remettre les données d'exemple" onPress={() => setConfirmReset(true)} />
+          </>
         )}
       </Section>
     </Screen>

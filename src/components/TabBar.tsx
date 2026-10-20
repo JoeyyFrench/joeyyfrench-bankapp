@@ -1,20 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SymbolView, type SFSymbol } from 'expo-symbols';
+import { Icon } from '../ui/Icon';
 import * as Haptics from 'expo-haptics';
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
 import { useApp } from '../store/AppStore';
 import { tap, useReducedMotion } from '../ui/kit';
 import { accentGradient, colors } from '../ui/theme';
 
-const TABS: { name: string; label: string; icon: SFSymbol; iconOn: SFSymbol; fallback: string }[] = [
-  { name: 'index', label: 'Accueil', icon: 'house', iconOn: 'house.fill', fallback: '⌂' },
-  { name: 'stats', label: 'Stats', icon: 'chart.pie', iconOn: 'chart.pie.fill', fallback: '◔' },
-  { name: 'pockets', label: 'Pockets', icon: 'square.grid.2x2', iconOn: 'square.grid.2x2.fill', fallback: '▦' },
-  { name: 'budget', label: 'Budget', icon: 'list.bullet', iconOn: 'list.bullet', fallback: '≡' },
+const TABS: { name: string; label: string; icon: string; iconOn: string }[] = [
+  { name: 'index', label: 'Accueil', icon: 'house', iconOn: 'house.fill' },
+  { name: 'stats', label: 'Stats', icon: 'chart.pie', iconOn: 'chart.pie.fill' },
+  { name: 'pockets', label: 'Pockets', icon: 'square.grid.2x2', iconOn: 'square.grid.2x2.fill' },
+  { name: 'budget', label: 'Budget', icon: 'list.bullet', iconOn: 'list.bullet' },
 ];
 
 /** Floating glass tab bar with the red "+" in the middle (quick entry). */
@@ -42,11 +42,7 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
         hitSlop={4}
         style={{ width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? 'rgba(255,255,255,0.08)' : 'transparent' }}
       >
-        {Platform.OS === 'ios' ? (
-          <SymbolView name={on ? t.iconOn : t.icon} size={21} tintColor={on ? colors.ink : colors.muted} weight={on ? 'semibold' : 'regular'} />
-        ) : (
-          <Text style={{ color: on ? colors.ink : colors.muted, fontSize: 20 }}>{t.fallback}</Text>
-        )}
+        <Icon name={on ? t.iconOn : t.icon} size={21} color={on ? colors.ink : colors.muted} weight={on ? 'semibold' : 'regular'} />
       </Pressable>
     );
   };
@@ -105,11 +101,7 @@ function PlusButton() {
       >
         <LinearGradient colors={accentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, { borderRadius: 29 }]} />
         <View style={[StyleSheet.absoluteFill, { borderRadius: 29, borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.25)' }]} />
-        {Platform.OS === 'ios' ? (
-          <SymbolView name="plus" size={24} tintColor="#FFFFFF" weight="bold" />
-        ) : (
-          <Text style={{ color: '#FFFFFF', fontSize: 30, fontWeight: '700', marginTop: -2 }}>+</Text>
-        )}
+        <Icon name="plus" size={24} color="#FFFFFF" weight="bold" />
       </Pressable>
     </Animated.View>
   );

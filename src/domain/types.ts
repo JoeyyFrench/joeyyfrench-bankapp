@@ -182,4 +182,8 @@ export interface State {
   ignoredRecurring: string[];
   notices: Notice[];
   history: Snapshot[];
+  /** Real use: charges are paid automatically up to this day (YYYY-MM-DD) */
+  settledTo?: string;
+  /** Real use: last payday recorded (YYYY-MM-DD); undefined in the demo, which simulates paydays */
+  lastPayday?: string;
 }

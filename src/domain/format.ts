@@ -18,7 +18,7 @@ export const eurShort = (n: number) => eur(Math.round(n)).replace(/,00(?=\s?€)
  */
 export function parseAmount(s: string | number | null | undefined): number {
   if (typeof s === 'number') return Number.isFinite(s) ? r2(s) : NaN;
-  let t = String(s ?? '').replace(/[\s\u00a0\u202f€]/g, '');
+  let t = String(s ?? '').replace(/[\s\u00a0\u202f€]/g, '').replace(/[\u2212\u2013]/g, '-');
   if (!t) return NaN;
   const lastComma = t.lastIndexOf(',');
   const lastDot = t.lastIndexOf('.');

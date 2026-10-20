@@ -158,17 +158,20 @@ export function addTx(
   return tx;
 }
 
+/** Money the app moves itself: shown as bank operations in the demo, as automatic ones in real use. */
+const autoSrc = (s: State): TxSource => (s.demo ? 'bunq' : 'auto');
+
 /** Pays from the bills pocket first, the rest from the current account. */
 export function payFromBills(s: State, label: string, amount: number, date?: string) {
   const fromPocket = Math.min(amount, Math.max(0, s.pockets.bills));
   if (fromPocket > 0) {
     s.pockets.bills = r2(s.pockets.bills - fromPocket);
-    addTx(s, label, -fromPocket, 'bills', 'bunq', date);
+    addTx(s, label, -fromPocket, 'bills', autoSrc(s), date);
   }
   const rest = r2(amount - fromPocket);
   if (rest > 0) {
     s.balance = r2(s.balance - rest);
-    addTx(s, `${label} (complément)`, -rest, 'courant', 'bunq', date);
+    addTx(s, `${label} (complément)`, -rest, 'courant', autoSrc(s), date);
   }
 }
 
@@ -177,7 +180,7 @@ export function payCharge(s: State, c: Charge, date: string) {
     const fromYear = Math.min(c.amount, c.saved ?? 0);
     if (fromYear > 0) {
       c.saved = r2((c.saved ?? 0) - fromYear);
-      addTx(s, c.label, -fromYear, 'year', 'bunq', date);
+      addTx(s, c.label, -fromYear, 'year', autoSrc(s), date);
     }
     const rest = r2(c.amount - fromYear);
     if (rest > 0) payFromBills(s, c.label, rest, date);
@@ -264,9 +267,8 @@ export function buildMoveItems(p: MoveParams): GoalItem[] {
 
 /** Settles the current cycle, cashes the salary and splits it across pockets. */
 export function simulatePayday(s: State) {
-  const set = s.settings;
   const t = today(s);
-  const pay = nextPayday(t, set.payDay);
+  const pay = nextPayday(t, s.settings.payDay);
   s.charges.forEach((c) => occIn(c, t, pay).forEach((d) => payCharge(s, c, ymd(d))));
   s.bills.forEach((b) => {
     if (!b.paid && parseYmd(b.due) <= pay) {
@@ -277,13 +279,21 @@ export function simulatePayday(s: State) {
     }
   });
   s.clock = ymd(pay);
+  return allocatePay(s, pay);
+}
 
-  const income = r2(set.salary + (set.otherIncome || 0));
-  s.balance = r2(s.balance + set.salary);
-  addTx(s, 'Salaire', set.salary, 'courant', 'bunq');
+/**
+ * Puts the salary into the pockets for the payday `pay`. Charges of the next cycle are counted from `from`
+ * (later than `pay` when the payday is recorded late and the charges in between were already paid).
+ */
+export function allocatePay(s: State, pay: Date, from: Date = pay, salary = s.settings.salary): Allocation {
+  const set = s.settings;
+  const income = r2(salary + (set.otherIncome || 0));
+  s.balance = r2(s.balance + salary);
+  addTx(s, 'Salaire', salary, 'courant', autoSrc(s));
   if (set.otherIncome > 0) {
     s.balance = r2(s.balance + set.otherIncome);
-    addTx(s, 'Autres revenus', set.otherIncome, 'courant', 'bunq');
+    addTx(s, 'Autres revenus', set.otherIncome, 'courant', autoSrc(s));
   }
 
   const take = (want: number, label: string, pocket: PocketKey) => {
@@ -298,7 +308,7 @@ export function simulatePayday(s: State) {
 
   // 1. Bills pocket: exactly what the next cycle needs
   const pay2 = nextPayday(pay, set.payDay);
-  const wantBills = r2(Math.max(0, needFor(s, pay, pay2) - s.pockets.bills));
+  const wantBills = r2(Math.max(0, needFor(s, from, pay2) - s.pockets.bills));
   const toBills = take(wantBills, 'Vers Factures', 'bills');
   s.pockets.bills = r2(s.pockets.bills + toBills);
 
@@ -364,7 +374,7 @@ export function simulatePayday(s: State) {
   const livingCovered = s.balance >= life;
   const status: MonthStatus = marge < 0 || !livingCovered ? 'tight' : marge >= income * 0.15 ? 'large' : 'ok';
   const alloc: Allocation = {
-    id: uid(), date: ymd(pay), income, salary: set.salary, toBills, wantBills,
+    id: uid(), date: ymd(pay), income, salary, toBills, wantBills,
     toYear: r2(toYear), wantYear: r2(wantYear), toDebtMin: r2(toDebtMin), toGoals: r2(toGoals), toCushion,
     life, marge, setAside, toDebtExtra, toSavings, status, left: s.balance,
   };
@@ -375,11 +385,57 @@ export function simulatePayday(s: State) {
   return alloc;
 }
 
+/* ------------------------------------------------------- real-time use */
+
+/** Most recent payday on or before `t`. */
+export function previousPaydayOf(t: Date, payDay: number) {
+  const n = nextPayday(t, payDay);
+  return onDay(n.getFullYear(), n.getMonth() - 1, payDay);
+}
+
+/**
+ * Real use (no simulated clock): monthly and yearly charges that came due since the last visit are paid
+ * automatically, from their pockets, on their date. Returns true when the state changed.
+ */
+export function catchUp(s: State): boolean {
+  if (s.clock) return false;
+  const t = realToday();
+  const key = ymd(t);
+  if (!s.settledTo) {
+    s.settledTo = key;
+    return true;
+  }
+  if (s.settledTo >= key) return false;
+  const from = parseYmd(s.settledTo);
+  s.charges.forEach((c) => occIn(c, from, t).forEach((d) => payCharge(s, c, ymd(d))));
+  s.settledTo = key;
+  return true;
+}
+
+/** Real use: the payday that has come and is waiting to be recorded, if any. */
+export function paydayDue(s: State): Date | null {
+  if (s.clock || !s.lastPayday) return null;
+  const due = nextPayday(parseYmd(s.lastPayday), s.settings.payDay);
+  return due <= realToday() ? due : null;
+}
+
+/** Real use: records the salary actually received and shares it out. */
+export function receivePayday(s: State, salary = s.settings.salary): Allocation | null {
+  const due = paydayDue(s);
+  if (!due) return null;
+  catchUp(s);
+  const t = realToday();
+  const alloc = allocatePay(s, due, t > due ? t : due, r2(salary));
+  s.lastPayday = ymd(due);
+  return alloc;
+}
+
 /** What the next payday would do, without changing anything. */
-export function previewPayday(s: State) {
+export function previewPayday(s: State, salary?: number) {
   const copy = clone(s);
   const before = copy.balance;
-  const alloc = simulatePayday(copy);
+  // Real use on payday: the pay waiting to be recorded; otherwise the next one
+  const alloc = (paydayDue(copy) ? receivePayday(copy, salary) : null) ?? simulatePayday(copy);
   return { ...alloc, pay2: nextPayday(today(s), s.settings.payDay), gain: r2(copy.balance - before) };
 }
 

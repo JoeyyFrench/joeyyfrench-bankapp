@@ -256,7 +256,8 @@ test('money is conserved to the cent over 10 years of paydays with awkward amoun
   for (let i = 0; i < 120; i++) {
     const n = s.tx.length;
     simulatePayday(s);
-    flows += s.tx.slice(n).filter((x) => x.src !== 'auto' || x.label.startsWith('Mensualité')).reduce((a, x) => a + x.amount, 0);
+    // Money entering or leaving: everything except moves between the user's own pockets
+    flows += s.tx.slice(n).filter((x) => !x.transfer).reduce((a, x) => a + x.amount, 0);
     assert.equal(total(s), r2(before + flows), `payday ${i}`);
   }
   const values = [s.balance, ...Object.values(s.pockets), ...s.charges.map((c) => c.saved ?? 0), ...s.goals.map((g) => g.balance)];

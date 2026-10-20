@@ -1,8 +1,9 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
-import Storage from 'expo-sqlite/kv-store';
+import { store } from './storage';
 import * as Haptics from 'expo-haptics';
-import { clone } from '../domain/engine';
+import { catchUp, clone } from '../domain/engine';
+import { freshState, type StartParams } from '../domain/fresh';
 import { runDetection } from '../domain/detection';
 import { migrate } from '../domain/migrate';
 import { demoState } from '../domain/demo';
@@ -24,13 +25,17 @@ export type SheetSpec =
   | { kind: 'debt'; id?: string }
   | { kind: 'debtPay'; debtId: string }
   | { kind: 'quick' }
-  | { kind: 'envelope'; key?: CategoryKey };
+  | { kind: 'envelope'; key?: CategoryKey }
+  | { kind: 'start' }
+  | { kind: 'balance' };
 
 interface Store {
   state: State;
   /** Applies a change on a copy of the state, re-runs subscription detection and saves. */
   update: (fn: (s: State) => void, toastMessage?: string) => void;
   reset: () => void;
+  /** Leaves the example data and starts with the user's own figures. */
+  startFresh: (p: StartParams) => void;
   toast: (message: string) => void;
   toastMessage: string | null;
   sheet: SheetSpec | null;
@@ -48,15 +53,16 @@ function load(): State {
   let s: State;
   let raw: string | null = null;
   try {
-    raw = Storage.getItemSync(KEY);
+    raw = store.get(KEY);
     s = migrate(raw ? JSON.parse(raw) : null);
   } catch {
     // Never lose a save we cannot read (e.g. written by a newer version): keep a copy before starting fresh
     try {
-      if (raw) Storage.setItemSync(`${KEY}/backup-${Date.now()}`, raw);
+      if (raw) store.set(`${KEY}/backup-${Date.now()}`, raw);
     } catch {}
     s = demoState();
   }
+  catchUp(s);
   runDetection(s);
   return s;
 }
@@ -70,13 +76,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    Storage.setItemAsync(KEY, JSON.stringify(state)).catch(() => {});
+    store.setAsync(KEY, JSON.stringify(state)).catch(() => {});
   }, [state]);
 
   useEffect(() => {
     const id = setInterval(() => {
       setTick((t) => t + 1);
       setNow(Date.now());
+      // A new day: pay the charges that just came due
+      setState((prev) => {
+        const next = clone(prev);
+        return catchUp(next) ? next : prev;
+      });
     }, 60_000);
     return () => clearInterval(id);
   }, []);
@@ -108,13 +119,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     toast("Données d'exemple remises");
   }, [toast]);
 
+  const startFresh = useCallback(
+    (p: StartParams) => {
+      setState(freshState(p));
+      toast('C’est parti avec tes vraies données');
+    },
+    [toast],
+  );
+
   const value = useMemo<Store>(
     () => ({
-      state, update, reset, toast, toastMessage, sheet, tick, now,
+      state, update, reset, startFresh, toast, toastMessage, sheet, tick, now,
       openSheet: (spec) => setSheet(spec),
       closeSheet: () => setSheet(null),
     }),
-    [state, update, reset, toast, toastMessage, sheet, tick, now],
+    [state, update, reset, startFresh, toast, toastMessage, sheet, tick, now],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

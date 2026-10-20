@@ -2,7 +2,7 @@ import React from 'react';
 import { Modal, Platform } from 'react-native';
 import { useApp, type SheetSpec } from '../../store/AppStore';
 import {
-  BillForm, ChargeForm, CushionForm, DebtForm, DebtPayForm, GoalForm, GoalItemForm, GoalMoveForm, MoveForm, TxForm, WishForm, WithdrawForm,
+  BalanceForm, BillForm, ChargeForm, CushionForm, DebtForm, DebtPayForm, GoalForm, GoalItemForm, GoalMoveForm, MoveForm, StartForm, TxForm, WishForm, WithdrawForm,
 } from './forms';
 import { EnvelopeForm, QuickAddForm } from './quick';
 
@@ -36,6 +36,8 @@ function SheetContent({ spec }: { spec: SheetSpec }) {
     case 'debtPay': return <DebtPayForm debtId={spec.debtId} />;
     case 'quick': return <QuickAddForm />;
     case 'envelope': return <EnvelopeForm category={spec.key} />;
+    case 'start': return <StartForm />;
+    case 'balance': return <BalanceForm />;
   }
 }
 

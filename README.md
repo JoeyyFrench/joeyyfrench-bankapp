@@ -19,7 +19,20 @@ Design « Nuit » : fond presque noir, cartes en verre, police Geist, accent rou
 
 Les données sont pour l'instant **des données d'exemple** (faux compte bunq). Tout est enregistré sur le téléphone.
 
-## Tester sur ton iPhone (Mac ou PC)
+## L’utiliser sur ton iPhone (sans compte développeur Apple)
+
+L’appli est en ligne sur **https://reste-a-vivre-joey.expo.app**.
+
+1. Ouvre ce lien dans **Safari** sur ton iPhone.
+2. Touche le bouton **Partager**, puis **Sur l’écran d’accueil**, puis **Ajouter**.
+3. Ouvre « Reste à vivre » depuis son icône : elle s’affiche en plein écran comme une appli, et marche aussi hors ligne.
+4. Touche **Commencer avec mes vraies données** et entre ton solde, ton salaire, ton jour de paie et ton budget de vie.
+
+Tes données restent sur le téléphone (rien n’est envoyé sur internet). Attention : si tu supprimes l’icône, elles sont effacées.
+
+Mettre en ligne une nouvelle version : `npx expo export --platform web` puis `npx eas-cli deploy --prod`.
+
+## Tester sur ton iPhone avec Expo Go (Mac ou PC)
 
 1. Installe [Node.js](https://nodejs.org) (version 20 ou plus) sur ton ordinateur.
 2. Installe l'appli **Expo Go** sur ton iPhone depuis l'App Store (mets-la à jour si elle est déjà installée : le projet utilise le SDK Expo 57, celui de la version App Store).

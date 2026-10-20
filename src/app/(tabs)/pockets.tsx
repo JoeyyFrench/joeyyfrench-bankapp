@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { LayoutAnimation, Platform, Pressable, View } from 'react-native';
+import { LayoutAnimation, Pressable, View } from 'react-native';
 import { router } from 'expo-router';
-import { SymbolView, type SFSymbol } from 'expo-symbols';
+import { Icon } from '../../ui/Icon';
 import { useApp } from '../../store/AppStore';
 import { DemoBanner, HeaderActions } from '../../components/common';
 import {
@@ -10,7 +10,7 @@ import {
 import { alpha, useColors, type ColorName } from '../../ui/theme';
 import {
   HOLD_HOURS, STATUS_LABEL, compute, completeWithdrawal, countPaydays, debtFreeEta, debtMins, debtsLeft, goalEta, goalPaid,
-  goalPerPay, goalProgress, goalRemaining, goalStatus, goalTarget, goalsSum, moveBetween, nextOcc, nextPayday, previewPayday,
+  goalPerPay, goalProgress, goalRemaining, goalStatus, goalTarget, goalsSum, moveBetween, nextOcc, nextPayday, paydayDue, previewPayday,
   today, toggleGoalItem, total, yearSaved, yearly,
 } from '../../domain/engine';
 import { dateFull, dateShort, dateTime, eur, eurShort, hoursLeft, parseYmd, r2 } from '../../domain/format';
@@ -164,7 +164,7 @@ export default function Pockets() {
           <Card tint={c.ok}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <View style={{ flex: 1, gap: 3 }}>
-                <Eyebrow color="ok">{`Prochaine paie · ${dateShort(k.pay)}`}</Eyebrow>
+                <Eyebrow color="ok">{paydayDue(s) ? 'Jour de paie : à répartir' : `Prochaine paie · ${dateShort(k.pay)}`}</Eyebrow>
                 <Txt style={{ fontSize: 26, fontWeight: '800', letterSpacing: -0.8, fontVariant: ['tabular-nums'] }}>{eur(pv.marge)}</Txt>
                 <Txt muted style={{ fontSize: 13 }}>de marge prévue · voir où ira chaque euro</Txt>
               </View>
@@ -185,7 +185,7 @@ const POCKET_TITLE: Record<PocketId, string> = {
 function Tile({
   label, symbol, color, amount, sub, subColor, progress, wide, selected, onPress,
 }: {
-  label: string; symbol: SFSymbol; color: ColorName; amount: string; sub: string; subColor?: ColorName;
+  label: string; symbol: string; color: ColorName; amount: string; sub: string; subColor?: ColorName;
   progress?: number; wide?: boolean; selected?: boolean; onPress: () => void;
 }) {
   const c = useColors();
@@ -202,11 +202,7 @@ function Tile({
         style={[{ padding: 14, gap: 10, borderRadius: 20, flexGrow: 1 }, wide ? { flexDirection: 'row', alignItems: 'center' } : null]}
       >
         <View style={{ width: 34, height: 34, borderRadius: 11, backgroundColor: alpha(c[color], 0.16), alignItems: 'center', justifyContent: 'center', borderCurve: 'continuous' }}>
-          {Platform.OS === 'ios' ? (
-            <SymbolView name={symbol} size={16} tintColor={c[color]} weight="semibold" />
-          ) : (
-            <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: c[color] }} />
-          )}
+          <Icon name={symbol} size={17} color={c[color]} weight="semibold" />
         </View>
         <View style={{ gap: 2, flex: wide ? 1 : undefined, minWidth: 0 }}>
           <Txt muted style={{ fontSize: 12.5, fontWeight: '600' }} numberOfLines={1}>{label}</Txt>

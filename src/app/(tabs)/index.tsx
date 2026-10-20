@@ -9,7 +9,7 @@ import {
   Banner, Btn, Card, CategoryIcon, Empty, KV, LinkText, List, ListRow, Meter, Rise, Row, Screen, Section, Sub, Tag, Txt,
 } from '../../ui/kit';
 import { useColors } from '../../ui/theme';
-import { WISH_HOURS, addTx, compute, today, wishReady } from '../../domain/engine';
+import { WISH_HOURS, addTx, compute, paydayDue, today, wishReady } from '../../domain/engine';
 import { DAY, dateLong, dateShort, dateTime, eur, eurShort, r2 } from '../../domain/format';
 import type { Wish } from '../../domain/types';
 
@@ -28,6 +28,7 @@ export default function Home() {
   return (
     <Screen eyebrow={day.charAt(0).toUpperCase() + day.slice(1)} title={name ? `${hello} ${name}` : hello} right={<HeaderActions />}>
       <DemoBanner />
+      <PaydayDue />
       <DetectionNotice />
 
       <HeroCard />
@@ -51,6 +52,26 @@ export default function Home() {
         </Rise>
       ) : null}
     </Screen>
+  );
+}
+
+/** Real use: the payday has come, ask to record it. */
+function PaydayDue() {
+  const { state } = useApp();
+  const c = useColors();
+  const due = paydayDue(state);
+  if (!due) return null;
+  return (
+    <Rise>
+      <Pressable accessibilityRole="button" onPress={() => router.push('/paie')} style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}>
+        <Card tint={c.ok}>
+          <Txt color="ok" style={{ fontSize: 11.5, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase' }}>{`Jour de paie · ${dateShort(due)}`}</Txt>
+          <Txt style={{ fontSize: 18, fontWeight: '700' }}>Ta paie est arrivée ?</Txt>
+          <Txt muted style={{ fontSize: 13.5 }}>Dis-moi combien tu as reçu : je remplis les pockets et je calcule ton nouveau reste à vivre.</Txt>
+          <Btn title="Répartir ma paie" onPress={() => router.push('/paie')} />
+        </Card>
+      </Pressable>
+    </Rise>
   );
 }
 
