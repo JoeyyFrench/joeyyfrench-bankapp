@@ -1,20 +1,11 @@
 import React, { useState } from 'react';
 import { LayoutAnimation, Pressable, StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Defs, G, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, G, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { useApp } from '../store/AppStore';
 import { Banner, KV, Pill, Txt, tap, useCountUp } from '../ui/kit';
 import { colors, fonts } from '../ui/theme';
 import { compute } from '../domain/engine';
 import { dateShort, eur } from '../domain/format';
-
-/** Malkidow three-pillar emblem (taller pointed centre pillar). */
-export function MalkidowMark({ size = 22, color = colors.ink, opacity = 1 }: { size?: number; color?: string; opacity?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 100 100" opacity={opacity}>
-      <Path d="M8 92 V38 L28 30 V92 Z M38 92 V24 L50 6 L62 24 V92 Z M72 92 V30 L92 38 V92 Z" fill={color} />
-    </Svg>
-  );
-}
 
 /** Two concentric rings: outer = living budget covered, inner = time left in the pay cycle. */
 function Rings({ money, time, tone, daysLeft }: { money: number; time: number; tone: string; daysLeft: number }) {
@@ -79,17 +70,11 @@ export function HeroCard() {
         <Rect width="100%" height="100%" fill="url(#bg)" />
         <Rect width="100%" height="100%" fill="url(#glow)" />
       </Svg>
-      <View style={{ position: 'absolute', right: -18, bottom: -22 }} pointerEvents="none">
-        <MalkidowMark size={150} color={colors.accent} opacity={0.07} />
-      </View>
 
       <View style={{ padding: 20, gap: 14 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={{ color: 'rgba(242,242,245,0.7)', fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' }}>
-            {`Dépensable d’ici le ${dateShort(k.pay)}`}
-          </Text>
-          <MalkidowMark size={18} color={colors.accent} />
-        </View>
+        <Text style={{ color: 'rgba(242,242,245,0.7)', fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' }}>
+          {`Dépensable d’ici le ${dateShort(k.pay)}`}
+        </Text>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <View style={{ flex: 1, gap: 4 }}>
