@@ -19,7 +19,7 @@ Les données sont pour l'instant **des données d'exemple** (faux compte bunq). 
 ## Tester sur ton iPhone (Mac ou PC)
 
 1. Installe [Node.js](https://nodejs.org) (version 20 ou plus) sur ton ordinateur.
-2. Installe l'appli **Expo Go** sur ton iPhone depuis l'App Store (mets-la à jour si elle est déjà installée : le projet utilise le SDK Expo 58).
+2. Installe l'appli **Expo Go** sur ton iPhone depuis l'App Store (mets-la à jour si elle est déjà installée : le projet utilise le SDK Expo 57, celui de la version App Store).
 3. Dans un terminal :
 
    ```sh

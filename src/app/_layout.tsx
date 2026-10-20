@@ -1,6 +1,6 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { NativeTabs } from 'expo-router/native-tabs';
+import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { AppProvider } from '../store/AppStore';
 import { SheetHost } from '../components/sheets/SheetHost';
 import { Toast } from '../components/Toast';
