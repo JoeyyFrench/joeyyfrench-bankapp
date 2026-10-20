@@ -13,6 +13,9 @@ Faite avec [Expo](https://expo.dev) (React Native + TypeScript).
 - **Objectifs** : avec une date (l'appli calcule combien mettre de côté) ou un montant par mois, et un modèle **Déménagement** (dépôt de garantie, frais d'agence au plafond légal, etc.).
 - **Détection des abonnements** : les paiements qui reviennent chaque mois (salle de sport, Spotify, Netflix…) sont ajoutés automatiquement aux charges, et les changements de prix sont suivis.
 - **Envies (règle des 48 h)** : un achat plaisir attend 48 h avant que tu décides.
+- **Stats** : dépenses par catégorie, revenus et dépenses sur 6 mois, évolution de l'épargne et des dettes. Un « mois » va d'une paie à la suivante.
+
+Thème sombre aux couleurs de Malkidow. Quatre onglets : Accueil, Stats, Pockets, Budget ; le compte et les réglages s'ouvrent depuis l'icône en haut à droite.
 
 Les données sont pour l'instant **des données d'exemple** (faux compte bunq). Tout est enregistré sur le téléphone.
 
@@ -51,11 +54,11 @@ npx expo lint      # ESLint
 
 ```
 src/
-  app/          écrans (Expo Router, onglets natifs) : Accueil, Pockets, Charges, Factures, Compte
+  app/          écrans (Expo Router) : (tabs)/ Accueil, Stats, Pockets, Budget + compte (modale)
   components/   bannières, toast, formulaires (feuilles modales)
-  domain/       moteur de calcul pur, testé : reste à vivre, jour de paie, objectifs, dettes, détection des abonnements
+  domain/       moteur de calcul pur, testé : reste à vivre, jour de paie, objectifs, dettes, détection des abonnements, stats
   store/        état de l'appli + sauvegarde locale (expo-sqlite/kv-store)
-  ui/           thème clair/sombre et composants
+  ui/           thème Malkidow, composants et graphiques (react-native-svg)
 ```
 
 ## Prochaine étape : connexion bunq

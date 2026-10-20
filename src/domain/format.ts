@@ -1,14 +1,35 @@
 export const DAY = 864e5;
 
-export const r2 = (n: number) => Math.round(n * 100) / 100;
+/** Rounds to the cent, half away from zero, without float noise (1.005 → 1.01, −0.125 → −0.13). */
+export const r2 = (n: number) => {
+  const v = (Math.sign(n) * Math.round(Math.abs(n) * 100 + 1e-7)) / 100;
+  return v === 0 ? 0 : v;
+};
 export const uid = () => Math.random().toString(36).slice(2, 10);
 
 const eurFmt = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 export const eur = (n: number) => eurFmt.format(n);
 
-/** Parses "12,50" or "12.50" into 12.5. Returns NaN when not a number. */
+/**
+ * Parses "12,50", "12.50", "1 234,56", "1.234,56" or "1,234.56". When both separators appear,
+ * the last one is the decimal mark. Returns NaN for anything that is not a clean number.
+ */
 export function parseAmount(s: string | number | null | undefined): number {
-  const n = parseFloat(String(s ?? '').replace(/\s/g, '').replace(',', '.'));
+  if (typeof s === 'number') return Number.isFinite(s) ? r2(s) : NaN;
+  let t = String(s ?? '').replace(/[\s\u00a0\u202f€]/g, '');
+  if (!t) return NaN;
+  const lastComma = t.lastIndexOf(',');
+  const lastDot = t.lastIndexOf('.');
+  if (lastComma >= 0 && lastDot >= 0) {
+    const dec = lastComma > lastDot ? ',' : '.';
+    const thousands = dec === ',' ? '.' : ',';
+    t = t.split(thousands).join('').replace(dec, '.');
+  } else if (lastComma >= 0) {
+    if (t.indexOf(',') !== lastComma) return NaN;
+    t = t.replace(',', '.');
+  } else if (lastDot >= 0 && t.indexOf('.') !== lastDot) return NaN;
+  if (!/^-?\d*\.?\d+$|^-?\d+\.$/.test(t)) return NaN;
+  const n = Number(t);
   return Number.isFinite(n) ? r2(n) : NaN;
 }
 export const amountInput = (n: number) => String(n).replace('.', ',');

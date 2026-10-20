@@ -124,7 +124,10 @@ export function compute(s: State) {
   const need = r2(upcoming.reduce((a, x) => a + x.portion, 0));
   const short = r2(Math.max(0, need - s.pockets.bills));
   const free = r2(s.balance - short);
-  const lifeNeed = r2(((s.settings.lifeBudget || 0) / 30.4) * days);
+  // The living budget is per pay cycle: what is needed until payday is the share of the cycle that remains
+  const prevPay = onDay(pay.getFullYear(), pay.getMonth() - 1, s.settings.payDay);
+  const cycleDays = Math.max(1, Math.round((pay.getTime() - prevPay.getTime()) / DAY));
+  const lifeNeed = r2(((s.settings.lifeBudget || 0) * Math.min(days, cycleDays)) / cycleDays);
   let status: HomeStatus;
   if (free < 0) status = { tone: 'bad', text: `Ça ne passe pas : il manque ${eur(-free)}` };
   else if (free < lifeNeed) status = { tone: 'warn', text: `Serré : ${eur(lifeNeed - free)} de moins que ton budget de vie` };
@@ -147,8 +150,10 @@ export function needFor(s: State, from: Date, to: Date) {
 
 /* ---------------------------------------------------------- transactions */
 
-export function addTx(s: State, label: string, amount: number, pocket: PocketKey, src: TxSource = 'manuel', date?: string): Tx {
-  const tx: Tx = { id: uid(), label, amount: r2(amount), date: date ?? ymd(today(s)), src, pocket };
+export function addTx(
+  s: State, label: string, amount: number, pocket: PocketKey, src: TxSource = 'manuel', date?: string, extra?: Partial<Tx>,
+): Tx {
+  const tx: Tx = { id: uid(), label, amount: r2(amount), date: date ?? ymd(today(s)), src, pocket, ...extra };
   s.tx.push(tx);
   return tx;
 }
@@ -190,7 +195,10 @@ export const goalRemaining = (g: Goal) => r2(Math.max(0, goalTarget(g) - goalPro
 export function goalPerPay(s: State, g: Goal, firstPay: Date) {
   if (g.mode !== 'date' || !g.deadline) return g.monthly || 0;
   const n = countPaydays(s, firstPay, parseYmd(g.deadline));
-  return n > 0 ? Math.ceil((goalRemaining(g) / n) * 100) / 100 : 0;
+  // deadline before the next payday: catch up in one go
+  if (n <= 0) return goalRemaining(g);
+  // work in whole cents so float noise never adds a cent
+  return Math.ceil(Math.round(goalRemaining(g) * 100) / n) / 100;
 }
 
 export type GoalStatus = { tone: 'ok' | 'late'; text: string; overdue?: boolean } | null;
@@ -263,7 +271,9 @@ export function simulatePayday(s: State) {
   s.bills.forEach((b) => {
     if (!b.paid && parseYmd(b.due) <= pay) {
       b.paid = true;
+      const before = s.tx.length;
       payFromBills(s, b.label, b.amount, b.due <= ymd(t) ? ymd(t) : b.due);
+      b.txIds = s.tx.slice(before).map((x) => x.id);
     }
   });
   s.clock = ymd(pay);
@@ -280,8 +290,8 @@ export function simulatePayday(s: State) {
     const a = r2(Math.max(0, Math.min(want, s.balance)));
     if (a > 0) {
       s.balance = r2(s.balance - a);
-      addTx(s, label, -a, 'courant', 'auto');
-      addTx(s, label, a, pocket, 'auto');
+      addTx(s, label, -a, 'courant', 'auto', undefined, { transfer: true });
+      addTx(s, label, a, pocket, 'auto', undefined, { transfer: true });
     }
     return a;
   };
@@ -306,48 +316,62 @@ export function simulatePayday(s: State) {
 
   // 3. Mandatory debt payments
   let toDebtMin = 0;
+  let wantDebtMin = 0;
   s.debts.forEach((d) => {
     const want = Math.min(d.monthly || 0, Math.max(0, d.remaining));
+    wantDebtMin += want;
     const a = r2(Math.max(0, Math.min(want, s.balance)));
     if (a > 0) {
       s.balance = r2(s.balance - a);
       d.remaining = r2(d.remaining - a);
-      addTx(s, `Mensualité ${d.label}`, -a, 'courant', 'auto');
+      addTx(s, `Mensualité ${d.label}`, -a, 'courant', 'auto', undefined, { category: 'dettes' });
       toDebtMin += a;
     }
   });
 
   // 4. Goals
   let toGoals = 0;
+  let wantGoals = 0;
   s.goals.forEach((g) => {
-    const a = take(Math.min(goalPerPay(s, g, pay), goalRemaining(g)), `Objectif ${g.label}`, 'goal');
+    const want = Math.min(goalPerPay(s, g, pay), goalRemaining(g));
+    wantGoals += want;
+    const a = take(want, `Objectif ${g.label}`, 'goal');
     g.balance = r2(g.balance + a);
     toGoals += a;
   });
 
   // 5. Safety cushion back to its target
-  const toCushion = take(r2(Math.max(0, set.cushion - s.pockets.cushion)), 'Vers Sécurité', 'cushion');
+  const wantCushion = r2(Math.max(0, set.cushion - s.pockets.cushion));
+  const toCushion = take(wantCushion, 'Vers Sécurité', 'cushion');
   s.pockets.cushion = r2(s.pockets.cushion + toCushion);
 
-  // 6. Automatic savings: a share of what is left once obligations and the living budget are covered
-  const committed = r2(toBills + toYear + toDebtMin + toGoals + toCushion);
-  const marge = r2(income - committed - (set.lifeBudget || 0));
-  const setAside = marge > 0 ? r2((marge * (set.marginShare || 0)) / 100) : 0;
+  // 6. Automatic savings: a share of what is left once every obligation (what was needed, not what could be
+  //    moved) and the living budget are covered — and never more than what the account really has beyond
+  //    the living budget, so savings never eat into the money needed to live until the next payday.
+  const life = set.lifeBudget || 0;
+  const committed = r2(wantBills + wantYear + wantDebtMin + wantGoals + wantCushion);
+  const marge = r2(income - committed - life);
+  const room = r2(Math.max(0, s.balance - life));
+  const target = marge > 0 ? Math.min(r2((marge * (set.marginShare || 0)) / 100), room) : 0;
   const wantDebt =
-    debtsLeft(s) > 0 ? r2(Math.min((setAside * (set.debtShare || 0)) / 100, Math.max(0, debtsLeft(s) - s.pockets.debts))) : 0;
+    debtsLeft(s) > 0 ? r2(Math.min((target * (set.debtShare || 0)) / 100, Math.max(0, debtsLeft(s) - s.pockets.debts))) : 0;
   const toDebtExtra = take(wantDebt, 'Vers Dettes', 'debts');
   s.pockets.debts = r2(s.pockets.debts + toDebtExtra);
-  const toSavings = take(r2(setAside - toDebtExtra), 'Vers Épargne', 'savings');
+  const toSavings = take(r2(target - toDebtExtra), 'Vers Épargne', 'savings');
   s.pockets.savings = r2(s.pockets.savings + toSavings);
+  const setAside = r2(toDebtExtra + toSavings);
 
-  const status: MonthStatus = marge < 0 ? 'tight' : marge >= income * 0.15 ? 'large' : 'ok';
+  const livingCovered = s.balance >= life;
+  const status: MonthStatus = marge < 0 || !livingCovered ? 'tight' : marge >= income * 0.15 ? 'large' : 'ok';
   const alloc: Allocation = {
     id: uid(), date: ymd(pay), income, salary: set.salary, toBills, wantBills,
     toYear: r2(toYear), wantYear: r2(wantYear), toDebtMin: r2(toDebtMin), toGoals: r2(toGoals), toCushion,
-    life: set.lifeBudget || 0, marge, setAside, toDebtExtra, toSavings, status, left: s.balance,
+    life, marge, setAside, toDebtExtra, toSavings, status, left: s.balance,
   };
   s.allocations.unshift(alloc);
   s.allocations = s.allocations.slice(0, 6);
+  s.history.push({ date: ymd(pay), savings: s.pockets.savings, debts: debtsLeft(s) });
+  s.history = s.history.slice(-24);
   return alloc;
 }
 
@@ -373,9 +397,13 @@ export function debtFreeEta(s: State, extraPerPay: number) {
 
 /* ------------------------------------------------- user actions (mutating) */
 
+export const canUnpayBill = (b: Bill) => !b.paid || !!b.txIds;
+
 export function toggleBill(s: State, id: string) {
   const b = s.bills.find((x) => x.id === id);
   if (!b) return null;
+  // A bill marked paid without its transactions (paid outside the app) cannot be undone safely
+  if (b.paid && !b.txIds) return null;
   b.paid = !b.paid;
   if (b.paid) {
     const before = s.tx.length;
@@ -435,8 +463,8 @@ export function moveBetween(s: State, from: PocketKey, to: PocketKey, amount: nu
   };
   write(from, read(from) - amount);
   write(to, read(to) + amount);
-  addTx(s, label, -amount, from, 'auto');
-  addTx(s, label, amount, to, 'auto');
+  addTx(s, label, -amount, from, 'auto', undefined, { transfer: true });
+  addTx(s, label, amount, to, 'auto', undefined, { transfer: true });
 }
 
 export function requestWithdrawal(s: State, amount: number, reason: string, note: string) {
@@ -464,7 +492,7 @@ export function repayDebt(s: State, debt: Debt, amount: number) {
   const a = r2(Math.min(amount, debt.remaining, s.pockets.debts));
   s.pockets.debts = r2(s.pockets.debts - a);
   debt.remaining = r2(debt.remaining - a);
-  addTx(s, `Remboursement ${debt.label}`, -a, 'debts', 'auto');
+  addTx(s, `Remboursement ${debt.label}`, -a, 'debts', 'auto', undefined, { category: 'dettes' });
   return a;
 }
 
@@ -473,7 +501,7 @@ export function deleteGoal(s: State, id: string) {
   const g = s.goals.find((x) => x.id === id);
   if (g && g.balance > 0) {
     s.balance = r2(s.balance + g.balance);
-    addTx(s, `Objectif supprimé : ${g.label}`, g.balance, 'courant', 'auto');
+    addTx(s, `Objectif supprimé : ${g.label}`, g.balance, 'courant', 'auto', undefined, { transfer: true });
   }
   s.goals = s.goals.filter((x) => x.id !== id);
 }
@@ -484,7 +512,7 @@ export function deleteCharge(s: State, id: string) {
   if (c.detectKey && !s.ignoredRecurring.includes(c.detectKey)) s.ignoredRecurring.push(c.detectKey);
   if (c.freq === 'year' && (c.saved ?? 0) > 0) {
     s.balance = r2(s.balance + (c.saved ?? 0));
-    addTx(s, `Provision rendue : ${c.label}`, c.saved ?? 0, 'courant', 'auto');
+    addTx(s, `Provision rendue : ${c.label}`, c.saved ?? 0, 'courant', 'auto', undefined, { transfer: true });
   }
   s.charges = s.charges.filter((x) => x.id !== id);
 }

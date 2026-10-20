@@ -93,19 +93,58 @@ export function detectRecurring(s: State): Recurring[] {
   return out;
 }
 
-export function matchCharge(s: State, f: Recurring) {
+/** Charge explicitly linked to this merchant, or whose own name is this merchant. */
+function nameMatch(s: State, f: Recurring) {
+  return s.charges.find((x) => x.detectKey === f.key) || s.charges.find((x) => x.freq !== 'year' && merchantKey(x.label) === f.key) || null;
+}
+
+/**
+ * Fuzzy match on amount (±5 %) and day (±3), only among charges not already linked, not claimed by
+ * another merchant in this run, and whose own name is not another detected merchant.
+ */
+function fuzzyMatch(s: State, f: Recurring, claimed: Set<string>, otherKeys: Set<string>) {
   return (
-    s.charges.find((x) => x.detectKey === f.key) ||
-    s.charges.find((x) => x.freq !== 'year' && merchantKey(x.label) === f.key) ||
     s.charges.find(
-      (x) => x.freq !== 'year' && !x.detectKey && Math.abs(x.amount - f.amount) <= Math.max(0.5, x.amount * 0.05) && dayDist(x.day, f.day) <= 3,
-    ) ||
-    null
+      (x) =>
+        x.freq !== 'year' &&
+        !x.detectKey &&
+        !claimed.has(x.id) &&
+        !otherKeys.has(merchantKey(x.label)) &&
+        Math.abs(x.amount - f.amount) <= Math.max(0.5, x.amount * 0.05) &&
+        dayDist(x.day, f.day) <= 3,
+    ) || null
   );
 }
 
-export const detectSuggestions = (s: State) =>
-  detectRecurring(s).filter((f) => !s.ignoredRecurring.includes(f.key) && !matchCharge(s, f));
+/** Resolves every detected merchant to a charge (or null): name matches first, fuzzy matches after. */
+function resolveMatches(s: State, found: Recurring[]) {
+  const result = new Map<string, Charge | null>();
+  const claimed = new Set<string>();
+  const keys = new Set(found.map((f) => f.key));
+  found.forEach((f) => {
+    const c = nameMatch(s, f);
+    result.set(f.key, c);
+    if (c) claimed.add(c.id);
+  });
+  found.forEach((f) => {
+    if (result.get(f.key)) return;
+    const others = new Set([...keys].filter((k) => k !== f.key));
+    const c = fuzzyMatch(s, f, claimed, others);
+    result.set(f.key, c);
+    if (c) claimed.add(c.id);
+  });
+  return result;
+}
+
+export function matchCharge(s: State, f: Recurring) {
+  return resolveMatches(s, detectRecurring(s)).get(f.key) ?? nameMatch(s, f);
+}
+
+export function detectSuggestions(s: State) {
+  const found = detectRecurring(s);
+  const matches = resolveMatches(s, found);
+  return found.filter((f) => !s.ignoredRecurring.includes(f.key) && !matches.get(f.key));
+}
 
 export function addDetected(s: State, f: Recurring): Charge {
   const c: Charge = {
@@ -121,9 +160,11 @@ export function runDetection(s: State) {
   let changed = false;
   const added: Charge[] = [];
   const priced: { label: string; from: number; to: number }[] = [];
-  detectRecurring(s).forEach((f) => {
+  const found = detectRecurring(s);
+  const matches = resolveMatches(s, found);
+  found.forEach((f) => {
     if (s.ignoredRecurring.includes(f.key)) return;
-    const c = matchCharge(s, f);
+    const c = matches.get(f.key) ?? null;
     if (c) {
       if (!c.detectKey) {
         c.detectKey = f.key;

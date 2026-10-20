@@ -44,10 +44,15 @@ const Ctx = createContext<Store | null>(null);
 
 function load(): State {
   let s: State;
+  let raw: string | null = null;
   try {
-    const raw = Storage.getItemSync(KEY);
+    raw = Storage.getItemSync(KEY);
     s = migrate(raw ? JSON.parse(raw) : null);
   } catch {
+    // Never lose a save we cannot read (e.g. written by a newer version): keep a copy before starting fresh
+    try {
+      if (raw) Storage.setItemSync(`${KEY}/backup-${Date.now()}`, raw);
+    } catch {}
     s = demoState();
   }
   runDetection(s);

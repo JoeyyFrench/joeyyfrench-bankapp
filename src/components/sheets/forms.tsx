@@ -3,14 +3,15 @@ import { Pressable, Text, View } from 'react-native';
 import { useApp } from '../../store/AppStore';
 import { SheetFrame } from './SheetFrame';
 import { AmountField, Banner, Btn, DateField, Field, KV, Segmented, Txt, Tip } from '../../ui/kit';
-import { useColors } from '../../ui/theme';
+import { CATEGORY_COLOR, useColors } from '../../ui/theme';
 import {
   HOLD_HOURS, WISH_HOURS, WITHDRAW_REASONS, addTx, buildMoveItems, countPaydays, deleteCharge, deleteGoal, deleteTx,
   goalProgress, goalTarget, moveBetween, nextOcc, nextPayday, repayDebt, requestWithdrawal, sumItems, today,
   type MoveParams,
 } from '../../domain/engine';
 import { addDays, amountInput, dateShort, eur, onDay, parseAmount, parseYmd, r2, uid, ymd } from '../../domain/format';
-import type { State } from '../../domain/types';
+import type { CategoryKey, State } from '../../domain/types';
+import { CATEGORY_KEYS, CATEGORY_LABEL, categorize } from '../../domain/stats';
 
 const AMOUNT_ERROR = 'Entre un montant supérieur à 0, par ex. 12,50.';
 const futureDate = (s: State, v: string) => !!v && parseYmd(v) > today(s);
@@ -24,7 +25,9 @@ export function TxForm({ id }: { id?: string }) {
   const [label, setLabel] = useState(it?.label ?? '');
   const [amount, setAmount] = useState(it ? amountInput(Math.abs(it.amount)) : '');
   const [date, setDate] = useState(it?.date ?? ymd(today(state)));
+  const [cat, setCat] = useState<CategoryKey | undefined>(it?.category);
   const a = parseAmount(amount);
+  const guessed = categorize(state, { label: label || ' ' });
   const nudge = !it && type === 'out' && a >= state.settings.wishMin;
 
   return (
@@ -38,8 +41,11 @@ export function TxForm({ id }: { id?: string }) {
         update((s) => {
           const prev = id ? s.tx.find((x) => x.id === id) : undefined;
           s.balance = r2(s.balance - (prev?.amount ?? 0) + signed);
-          if (prev) Object.assign(prev, { label: label.trim(), amount: signed, date });
-          else addTx(s, label.trim(), signed, 'courant', 'manuel', date);
+          const category = type === 'out' ? cat : undefined;
+          if (prev) {
+            Object.assign(prev, { label: label.trim(), amount: signed, date, category });
+            if (!category) delete prev.category;
+          } else addTx(s, label.trim(), signed, 'courant', 'manuel', date, category ? { category } : undefined);
         }, it ? 'Modifié' : 'Ajouté');
         closeSheet();
       }}
@@ -49,6 +55,7 @@ export function TxForm({ id }: { id?: string }) {
       <Field label="Libellé" value={label} onChangeText={setLabel} placeholder="ex. Courses" autoFocus={!it} />
       <AmountField label="Montant (€)" value={amount} onChangeText={setAmount} />
       <DateField label="Date" value={date} onChange={setDate} />
+      {type === 'out' ? <CategoryPicker value={cat} guessed={guessed} onChange={setCat} /> : null}
       {nudge ? (
         <Banner tone="goal">
           <View style={{ gap: 8 }}>
@@ -58,6 +65,34 @@ export function TxForm({ id }: { id?: string }) {
         </Banner>
       ) : null}
     </SheetFrame>
+  );
+}
+
+function CategoryPicker({ value, guessed, onChange }: { value?: CategoryKey; guessed: CategoryKey; onChange: (v?: CategoryKey) => void }) {
+  const c = useColors();
+  const chip = (key: CategoryKey | undefined, text: string) => {
+    const on = value === key;
+    return (
+      <Pressable
+        key={key ?? 'auto'}
+        accessibilityRole="radio"
+        accessibilityState={{ checked: on }}
+        onPress={() => onChange(key)}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: on ? c.accent : c.line, backgroundColor: on ? c.accentSoft : 'transparent', borderRadius: 999, paddingHorizontal: 11, paddingVertical: 6 }}
+      >
+        {key ? <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: CATEGORY_COLOR[key] }} /> : null}
+        <Text style={{ color: on ? c.ink : c.muted, fontSize: 13.5, fontWeight: '600' }}>{text}</Text>
+      </Pressable>
+    );
+  };
+  return (
+    <View style={{ gap: 6 }}>
+      <Txt muted style={{ fontSize: 13, fontWeight: '600' }}>Catégorie</Txt>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        {chip(undefined, `Auto · ${CATEGORY_LABEL[guessed]}`)}
+        {CATEGORY_KEYS.map((k) => chip(k, CATEGORY_LABEL[k]))}
+      </View>
+    </View>
   );
 }
 

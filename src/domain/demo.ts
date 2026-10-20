@@ -1,4 +1,4 @@
-import { addDays, onDay, realToday, uid, ymd } from './format';
+import { addDays, onDay, r2, realToday, uid, ymd } from './format';
 import { buildMoveItems, sumItems } from './engine';
 import type { Charge, State, Tx } from './types';
 
@@ -12,18 +12,12 @@ export function demoState(): State {
   const tx = (label: string, amount: number, date: string, pocket: Tx['pocket'] = 'courant'): Tx => ({
     id: uid(), label, amount, date, src: 'bunq', pocket,
   });
-  /** Bank history: one debit per month on `day`, oldest first. */
-  const past = (label: string, amounts: number[], day: number) => {
-    const base = onDay(t.getFullYear(), t.getMonth(), day) <= t ? 0 : 1;
-    const n = amounts.length;
-    return amounts.map((a, i) => tx(label, -a, ymd(onDay(t.getFullYear(), t.getMonth() - base - (n - 1 - i), day))));
-  };
   const moveItems = buildMoveItems({
     rent: 550, charges: 50, furnished: false, agency: true, surface: 30, zoneRate: 8, moveCost: 350, setup: 800, insurance: 120,
   });
 
   return {
-    v: 6,
+    v: 7,
     demo: true,
     clock: null,
     settings: {
@@ -64,24 +58,51 @@ export function demoState(): State {
       { id: uid(), label: 'Paiement en 4 fois', initial: 240, remaining: 180, monthly: 60 },
       { id: uid(), label: "Prêt d'un ami", initial: 300, remaining: 300, monthly: 0 },
     ],
-    tx: [
-      tx('Supermarché', -46.82, rel(0)),
-      tx('Boulangerie', -4.6, rel(-1)),
-      tx('Station essence', -58.4, rel(-2)),
-      tx('Amende stationnement', -35, rel(-3), 'bills'),
-      tx('Remboursement ami', 20, rel(-4)),
-      tx('Restaurant', -23.5, rel(-6)),
-      tx('CB LECLERC', -62.3, rel(-40)),
-      tx('CB LECLERC', -48.1, rel(-26)),
-      tx('CB LECLERC', -91.7, rel(-9)),
-      ...past('PRLV SEPA BASIC FIT', [29.99, 29.99, 29.99], 3),
-      ...past('SPOTIFY STOCKHOLM', [10.99, 10.99, 11.12], 22),
-      ...past('NETFLIX.COM', [13.49, 13.49], 14),
-      ...past('PRLV SEPA FREE MOBILE', [15.99, 15.99, 15.99], 12),
-    ],
+    tx: history(),
     allocations: [],
     withdrawals: [],
     ignoredRecurring: [],
     notices: [],
+    history: [5, 4, 3, 2, 1].map((k, i) => ({
+      date: ymd(onDay(t.getFullYear(), t.getMonth() - k, 28)),
+      savings: [180, 240, 300, 360, 420][i],
+      debts: [2240, 2120, 1985, 1860, 1735][i],
+    })),
   };
+
+  /** Six months of bank history, so the stats and the subscription detector have something to work with. */
+  function history(): Tx[] {
+    let seed = 42;
+    const rand = () => {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      return seed / 2147483648;
+    };
+    const out: Tx[] = [];
+    const cut = ymd(t);
+    const add = (label: string, amount: number, d: Date, extra: Partial<Tx> = {}) => {
+      const date = ymd(d);
+      if (date <= cut) out.push({ ...tx(label, r2(amount), date), ...extra });
+    };
+    for (let k = 6; k >= 0; k--) {
+      const at = (day: number) => onDay(t.getFullYear(), t.getMonth() - k, day);
+      add('Salaire', 2000, at(28));
+      add('PRLV LOYER', -520, at(5));
+      add('PRLV ASSURANCE AUTO', -48.2, at(10));
+      add('PRLV SEPA FREE MOBILE', -15.99, at(12));
+      add('PRLV BOX INTERNET', -29.99, at(20));
+      add('PRLV EDF', -62, at(25));
+      add('PRLV SEPA BASIC FIT', -29.99, at(3));
+      add('SPOTIFY STOCKHOLM', k >= 2 ? -10.99 : -11.12, at(22));
+      if (k <= 1) add('NETFLIX.COM', -13.49, at(14));
+      add('Mensualité Crédit conso', -85, at(28), { src: 'auto', category: 'dettes' });
+      add('Mensualité Paiement en 4 fois', -60, at(28), { src: 'auto', category: 'dettes' });
+      [2, 9, 16, 23].forEach((d, i) => add(i % 2 ? 'CB LIDL' : 'CB LECLERC', -(35 + rand() * 55), at(d)));
+      [7, 21].forEach((d) => add('CB STATION ESSENCE', -(45 + rand() * 25), at(d)));
+      [6, 13, 19, 27].forEach((d, i) => add(i % 2 ? 'CB BOULANGERIE' : 'CB RESTAURANT', -(i % 2 ? 4 + rand() * 6 : 18 + rand() * 30), at(d)));
+      if (rand() > 0.4) add('CB AMAZON', -(15 + rand() * 60), at(17));
+      if (rand() > 0.7) add('CB PHARMACIE', -(8 + rand() * 20), at(11));
+      if (k === 2) add('Remboursement ami', 20, at(15));
+    }
+    return out;
+  }
 }

@@ -10,6 +10,20 @@ export interface Tx {
   date: string;
   src: TxSource;
   pocket: PocketKey;
+  /** Money moved between the user's own pockets: neither income nor spending */
+  transfer?: boolean;
+  /** Spending category chosen by the user (otherwise guessed from the label) */
+  category?: CategoryKey;
+}
+
+export type CategoryKey =
+  | 'logement' | 'courses' | 'transport' | 'sorties' | 'abonnements' | 'factures' | 'sante' | 'shopping' | 'dettes' | 'autre';
+
+/** End-of-cycle picture, recorded at each payday, used for the savings and debts chart */
+export interface Snapshot {
+  date: string;
+  savings: number;
+  debts: number;
 }
 
 export interface Charge {
@@ -144,7 +158,7 @@ export interface Pockets {
 }
 
 export interface State {
-  v: 6;
+  v: 7;
   demo: boolean;
   /** Simulated "today" (YYYY-MM-DD) after a simulated payday, null = real date */
   clock: string | null;
@@ -163,4 +177,5 @@ export interface State {
   withdrawals: Withdrawal[];
   ignoredRecurring: string[];
   notices: Notice[];
+  history: Snapshot[];
 }

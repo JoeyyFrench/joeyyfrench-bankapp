@@ -1,12 +1,11 @@
 import React from 'react';
-import { useApp } from '../store/AppStore';
-import { DemoBanner, SyncPill } from '../components/common';
-import { Btn, Card, DateBadge, Empty, KV, List, ListRow, Meter, Row, Screen, Section, Sub, Tag, Tip } from '../ui/kit';
-import { monthly, nextOcc, nextPayday, paydaysUntil, today, yearly } from '../domain/engine';
-import { addDetected, category, chargeKey, detectSuggestions, isSubscription, prettyName } from '../domain/detection';
-import { eur, r2 } from '../domain/format';
+import { useApp } from '../../store/AppStore';
+import { Btn, Card, DateBadge, Empty, KV, List, ListRow, Meter, Row, Section, Sub, Tag, Tip } from '../../ui/kit';
+import { monthly, nextOcc, nextPayday, paydaysUntil, today, yearly } from '../../domain/engine';
+import { addDetected, category, chargeKey, detectSuggestions, isSubscription, prettyName } from '../../domain/detection';
+import { eur, r2 } from '../../domain/format';
 
-export default function Charges() {
+export function ChargesContent() {
   const { state, openSheet, update } = useApp();
   const t = today(state);
   const pay = nextPayday(t, state.settings.payDay);
@@ -17,8 +16,7 @@ export default function Charges() {
   const suggestions = state.settings.autoSubs ? [] : detectSuggestions(state);
 
   return (
-    <Screen title="Charges" right={<SyncPill />}>
-      <DemoBanner />
+    <>
 
       <Section title="Abonnements et contrats" meta={`${eur(subTotal)} / mois`}>
         <Card style={{ gap: 10 }}>
@@ -104,6 +102,6 @@ export default function Charges() {
         </List>
         <Btn title="Ajouter une charge" onPress={() => openSheet({ kind: 'charge' })} />
       </Section>
-    </Screen>
+    </>
   );
 }

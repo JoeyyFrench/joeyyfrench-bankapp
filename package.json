@@ -18,6 +18,7 @@
     "react-native": "0.86.3",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
+    "react-native-svg": "15.15.4",
     "react-native-web": "^0.21.4"
   },
   "devDependencies": {
@@ -32,7 +33,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "test": "tsx --test src/domain/*.test.ts",
+    "test": "TZ=Europe/Paris tsx --test src/domain/*.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "expo lint"
   },

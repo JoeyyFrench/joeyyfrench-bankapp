@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { StyleSheet, Switch, TextInput, View } from 'react-native';
 import { useApp } from '../store/AppStore';
-import { DemoBanner, SyncPill } from '../components/common';
-import { Banner, Btn, DateBadge, Empty, List, ListRow, Row, Screen, Section, Sub, Txt } from '../ui/kit';
+import { router } from 'expo-router';
+import { DemoBanner } from '../components/common';
+import { categorize, CATEGORY_LABEL, isSpending } from '../domain/stats';
+import { Banner, Btn, DateBadge, Empty, IconButton, List, ListRow, Row, Screen, Section, Sub, Txt } from '../ui/kit';
 import { useColors } from '../ui/theme';
 import { total } from '../domain/engine';
 import { amountInput, eur, parseAmount, parseYmd } from '../domain/format';
@@ -23,19 +25,19 @@ export default function Compte() {
   const mins = Math.round((now - new Date(state.lastSync).getTime()) / 60000);
 
   return (
-    <Screen title="Compte" right={<SyncPill />}>
+    <Screen title="Compte" right={<IconButton symbol="xmark" fallback="✕" label="Fermer" onPress={() => router.back()} />}>
       <DemoBanner />
-      <View style={{ backgroundColor: c.charge, borderRadius: 20, padding: 20, gap: 14, borderCurve: 'continuous' }}>
+      <View style={{ backgroundColor: c.accentDeep, borderRadius: 20, padding: 20, gap: 14, borderCurve: 'continuous', borderWidth: 1, borderColor: c.accentDark }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <Txt style={{ color: c.surface, fontSize: 13 }}>Compte courant</Txt>
-          <View style={{ borderWidth: 1, borderColor: c.surface, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 2, opacity: 0.85 }}>
-            <Txt style={{ color: c.surface, fontSize: 11.5 }}>{state.demo ? 'bunq · sandbox' : 'bunq'}</Txt>
+          <Txt style={{ color: c.accentInk, fontSize: 13 }}>Compte courant</Txt>
+          <View style={{ borderWidth: 1, borderColor: c.accentInk, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 2, opacity: 0.85 }}>
+            <Txt style={{ color: c.accentInk, fontSize: 11.5 }}>{state.demo ? 'bunq · sandbox' : 'bunq'}</Txt>
           </View>
         </View>
-        <Txt style={{ color: c.surface, fontSize: 34, fontWeight: '800', letterSpacing: -0.5, fontVariant: ['tabular-nums'] }}>{eur(state.balance)}</Txt>
+        <Txt style={{ color: c.accentInk, fontSize: 34, fontWeight: '800', letterSpacing: -0.5, fontVariant: ['tabular-nums'] }}>{eur(state.balance)}</Txt>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <Txt style={{ color: c.surface, fontSize: 13 }}>{mins < 1 ? "Synchronisé à l'instant" : `Synchronisé il y a ${mins < 60 ? `${mins} min` : `${Math.round(mins / 60)} h`}`}</Txt>
-          <Txt style={{ color: c.surface, fontSize: 13 }}>Total {eur(total(state))}</Txt>
+          <Txt style={{ color: c.accentInk, fontSize: 13 }}>{mins < 1 ? "Synchronisé à l'instant" : `Synchronisé il y a ${mins < 60 ? `${mins} min` : `${Math.round(mins / 60)} h`}`}</Txt>
+          <Txt style={{ color: c.accentInk, fontSize: 13 }}>Total {eur(total(state))}</Txt>
         </View>
       </View>
 
@@ -43,7 +45,8 @@ export default function Compte() {
         <List>
           {tx.length ? (
             tx.map((x) => {
-              const editable = x.pocket === 'courant' && x.src === 'manuel';
+              // bank and manual spending can be edited (at least to fix the category); internal transfers cannot
+              const editable = !x.transfer && x.src !== 'auto';
               return (
                 <ListRow
                   key={x.id}
@@ -52,7 +55,17 @@ export default function Compte() {
                   amount={`${x.amount > 0 ? '+ ' : '− '}${eur(Math.abs(x.amount))}`}
                   amountColor={x.amount > 0 ? 'ok' : undefined}
                   onPress={editable ? () => openSheet({ kind: 'tx', id: x.id }) : undefined}
-                  subtitle={<Sub>{`${POCKET_LABEL[x.pocket] ?? 'Courant'} · ${x.src === 'auto' ? 'Automatique' : x.src === 'bunq' ? 'Banque' : 'Saisie manuelle'}`}</Sub>}
+                  subtitle={
+                    <Sub>
+                      {[
+                        x.transfer ? `Virement interne · ${POCKET_LABEL[x.pocket] ?? 'Courant'}` : POCKET_LABEL[x.pocket] ?? 'Courant',
+                        isSpending(x) ? CATEGORY_LABEL[categorize(state, x)] : null,
+                        x.src === 'auto' ? 'Automatique' : x.src === 'bunq' ? 'Banque' : 'Saisie manuelle',
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </Sub>
+                  }
                 />
               );
             })

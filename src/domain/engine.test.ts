@@ -7,6 +7,7 @@ import {
 } from './engine';
 import { detectRecurring, runDetection, merchantKey, detectSuggestions } from './detection';
 import { migrate } from './migrate';
+import { categorize, lastMonths, monthlyFlows, savingsDebtSeries, spendingByCategory } from './stats';
 import { r2 } from './format';
 
 test('merchant keys strip bank noise', () => {
@@ -31,11 +32,13 @@ test('reste à vivre takes what the bills pocket cannot cover from the current a
 test('detection adds gym and streaming, recognises the existing phone plan, ignores groceries', () => {
   const s = demoState();
   const keys = detectRecurring(s).map((f) => f.key).sort();
-  assert.deepEqual(keys, ['basic fit', 'free mobile', 'netflix', 'spotify']);
+  assert.deepEqual(keys, ['assurance auto', 'basic fit', 'box internet', 'edf', 'free mobile', 'loyer', 'netflix', 'spotify']);
   runDetection(s);
   const auto = s.charges.filter((c) => c.auto).map((c) => c.label).sort();
   assert.deepEqual(auto, ['Basic Fit', 'Netflix', 'Spotify']);
   assert.equal(s.charges.find((c) => c.label === 'Forfait mobile')?.detectKey, 'free mobile');
+  assert.equal(s.charges.find((c) => c.label === 'Électricité')?.detectKey, 'edf');
+  assert.equal(s.charges.filter((c) => c.freq === 'month').length, 8);
   assert.equal(s.charges.find((c) => c.label === 'Spotify')?.amount, 11.12);
   assert.equal(s.notices.length, 1);
   // idempotent
@@ -164,9 +167,47 @@ test('migration from the web prototype keeps data', () => {
     goals: [],
   };
   const m = migrate(v4);
-  assert.equal(m.v, 6);
+  assert.equal(m.v, 7);
   assert.equal(m.pockets.savings, 99);
   assert.equal(m.settings.autoSubs, true);
   assert.deepEqual(m.debts, []);
   assert.equal(migrate(null).demo, true);
+});
+
+test('stats ignore transfers and split spending by category', () => {
+  const s = demoState();
+  runDetection(s);
+  const months = lastMonths(s, 6);
+  const flows = monthlyFlows(s, 6);
+  assert.equal(flows.length, 6);
+  assert.ok(flows.every((f) => f.income >= 2000));
+  const spend = spendingByCategory(s, months[4].from, months[4].to);
+  assert.equal(r2(spend.slices.reduce((a, x) => a + x.amount, 0)), spend.total);
+  assert.equal(spend.slices.find((x) => x.key === 'logement')?.amount, 520);
+  assert.ok(spend.slices.some((x) => x.key === 'abonnements'));
+  // moving money between pockets is not spending
+  const spendingBefore = monthlyFlows(s, 6)[5].spending;
+  s.tx.push({ id: 't', label: 'Vers Épargne', amount: -100, date: months[5].from, src: 'auto', pocket: 'courant', transfer: true });
+  assert.equal(monthlyFlows(s, 6)[5].spending, spendingBefore);
+});
+
+test('categories: user choice wins, then charges, then keywords', () => {
+  const s = demoState();
+  runDetection(s);
+  assert.equal(categorize(s, { label: 'CB LECLERC' }), 'courses');
+  assert.equal(categorize(s, { label: 'PRLV LOYER' }), 'logement');
+  assert.equal(categorize(s, { label: 'SPOTIFY STOCKHOLM' }), 'abonnements');
+  assert.equal(categorize(s, { label: 'PRLV EDF' }), 'factures');
+  assert.equal(categorize(s, { label: 'CB LECLERC', category: 'sorties' }), 'sorties');
+  assert.equal(categorize(s, { label: 'Truc inconnu' }), 'autre');
+});
+
+test('payday records a savings and debts snapshot', () => {
+  const s = demoState();
+  const n = s.history.length;
+  simulatePayday(s);
+  assert.equal(s.history.length, n + 1);
+  assert.equal(s.history[n].savings, s.pockets.savings);
+  assert.equal(s.history[n].debts, debtsLeft(s));
+  assert.ok(savingsDebtSeries(s).length >= 2);
 });

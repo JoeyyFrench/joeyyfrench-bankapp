@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { useApp } from '../store/AppStore';
-import { Banner, Btn, Card, Eyebrow, KV, Row, Txt, tap } from '../ui/kit';
+import { Banner, Btn, Card, Eyebrow, IconButton, KV, Row, Txt, tap } from '../ui/kit';
 import { useColors } from '../ui/theme';
 import { dateLong, eur } from '../domain/format';
 import { today } from '../domain/engine';
@@ -27,6 +27,22 @@ export function SyncPill() {
       <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: c.ok }} />
       <Txt muted style={{ fontSize: 12 }}>{label}</Txt>
     </Pressable>
+  );
+}
+
+/** Sync + account buttons shown in the header of every tab. */
+export function HeaderActions() {
+  const { update } = useApp();
+  return (
+    <Row wrap={false} style={{ gap: 8, marginBottom: 4 }}>
+      <IconButton
+        symbol="arrow.triangle.2.circlepath"
+        fallback="↻"
+        label="Synchroniser le compte"
+        onPress={() => update((s) => { s.lastSync = new Date().toISOString(); }, 'Compte à jour (simulation)')}
+      />
+      <IconButton symbol="person.crop.circle" fallback="☰" label="Compte et réglages" onPress={() => router.push('/compte')} />
+    </Row>
   );
 }
 

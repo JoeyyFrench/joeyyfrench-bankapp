@@ -7,6 +7,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Haptics from 'expo-haptics';
 import { alpha, radius, space, useColors, type ColorName } from './theme';
 import { dateFull, parseYmd, ymd } from '../domain/format';
+import { SymbolView, type SFSymbol } from 'expo-symbols';
 
 export const tap = () => {
   if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
@@ -58,9 +59,10 @@ export function Card({ children, style, accent }: { children: React.ReactNode; s
           padding: space.lg,
           gap: space.md,
           borderCurve: 'continuous',
-          boxShadow: '0 1px 2px rgba(21,34,30,0.06), 0 8px 24px rgba(21,34,30,0.06)',
+          borderWidth: 1,
+          borderColor: '#22222A',
         },
-        accent ? { borderLeftWidth: 5, borderLeftColor: c[accent] } : null,
+        accent ? { borderLeftWidth: 3, borderLeftColor: c[accent] } : null,
         style,
       ]}
     >
@@ -73,7 +75,7 @@ export function List({ children }: { children: React.ReactNode }) {
   const c = useColors();
   const items = React.Children.toArray(children).filter(Boolean);
   return (
-    <View style={{ backgroundColor: c.surface, borderRadius: radius.lg, overflow: 'hidden', borderCurve: 'continuous' }}>
+    <View style={{ backgroundColor: c.surface, borderRadius: radius.lg, overflow: 'hidden', borderCurve: 'continuous', borderWidth: 1, borderColor: '#22222A' }}>
       {items.map((child, i) => (
         <View key={i} style={i > 0 ? { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.line } : null}>
           {child}
@@ -378,3 +380,78 @@ export const Empty = ({ children }: { children: string }) => (
 );
 
 export const Tip = ({ children }: { children: string }) => <Txt muted style={{ fontSize: 12.5, lineHeight: 17 }}>{children}</Txt>;
+
+/* ------------------------------------------------------------ additions */
+
+/** Round icon button using SF Symbols (falls back to a text glyph elsewhere). */
+export function IconButton({ symbol, fallback, label, onPress, tint }: { symbol: SFSymbol; fallback: string; label: string; onPress: () => void; tint?: string }) {
+  const c = useColors();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={8}
+      onPress={() => {
+        tap();
+        onPress();
+      }}
+      style={({ pressed }) => ({
+        width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center',
+        backgroundColor: c.surface2, opacity: pressed ? 0.6 : 1, borderWidth: 1, borderColor: c.line,
+      })}
+    >
+      {Platform.OS === 'ios' ? (
+        <SymbolView name={symbol} size={18} tintColor={tint ?? c.ink} />
+      ) : (
+        <Text style={{ color: tint ?? c.ink, fontSize: 16 }}>{fallback}</Text>
+      )}
+    </Pressable>
+  );
+}
+
+/**
+ * Card that shows a one-line summary and opens to reveal details.
+ * Keeps long screens short: the user only expands what they care about.
+ */
+export function Expandable({
+  color, title, summary, amount, children, initiallyOpen = false,
+}: { color: ColorName; title: string; summary?: React.ReactNode; amount?: string; children: React.ReactNode; initiallyOpen?: boolean }) {
+  const c = useColors();
+  const [open, setOpen] = useState(initiallyOpen);
+  return (
+    <View style={{ backgroundColor: c.surface, borderRadius: radius.xl, borderCurve: 'continuous', borderWidth: 1, borderColor: open ? c.line : '#22222A', overflow: 'hidden' }}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityLabel={`${title}${amount ? `, ${amount}` : ''}`}
+        onPress={() => {
+          tap();
+          setOpen((o) => !o);
+        }}
+        style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, opacity: pressed ? 0.7 : 1 })}
+      >
+        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: c[color] }} />
+        <View style={{ flex: 1, gap: 2 }}>
+          <Txt style={{ fontSize: 16, fontWeight: '700' }}>{title}</Txt>
+          {summary ? (typeof summary === 'string' ? <Txt muted style={{ fontSize: 12.5 }}>{summary}</Txt> : summary) : null}
+        </View>
+        {amount ? <Txt style={{ fontSize: 18, fontWeight: '800', fontVariant: ['tabular-nums'] }}>{amount}</Txt> : null}
+        <Text style={{ color: c.faint, fontSize: 18, transform: [{ rotate: open ? '90deg' : '0deg' }] }}>›</Text>
+      </Pressable>
+      {open ? <View style={{ paddingHorizontal: 16, paddingBottom: 16, gap: 12 }}>{children}</View> : null}
+    </View>
+  );
+}
+
+export function StatTile({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: ColorName }) {
+  const c = useColors();
+  return (
+    <View style={{ flexGrow: 1, flexBasis: '45%', backgroundColor: c.surface, borderRadius: radius.lg, padding: 14, gap: 4, borderWidth: 1, borderColor: '#22222A', borderCurve: 'continuous' }}>
+      <Txt muted style={{ fontSize: 12, fontWeight: '600', letterSpacing: 0.4, textTransform: 'uppercase' }}>{label}</Txt>
+      <Txt color={color} style={{ fontSize: 22, fontWeight: '800', fontVariant: ['tabular-nums'], letterSpacing: -0.3 }} adjustsFontSizeToFit numberOfLines={1}>
+        {value}
+      </Txt>
+      {sub ? <Txt muted style={{ fontSize: 12 }}>{sub}</Txt> : null}
+    </View>
+  );
+}

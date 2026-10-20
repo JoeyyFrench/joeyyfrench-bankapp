@@ -6,13 +6,14 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.joeyyfrench.resteavivre",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "backgroundColor": "#0E0E12"
     },
     "android": {
       "package": "com.joeyyfrench.resteavivre",
@@ -44,6 +45,7 @@
       "eas": {
         "projectId": "14f7e01f-76a5-42d4-a038-fea9793ecb09"
       }
-    }
+    },
+    "backgroundColor": "#0E0E12"
   }
 }
