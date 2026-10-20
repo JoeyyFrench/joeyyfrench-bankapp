@@ -1,0 +1,59 @@
+{
+  "expo": {
+    "name": "Reste à vivre",
+    "slug": "joeyyfrench-bankapp",
+    "scheme": "resteavivre",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.joeyyfrench.resteavivre",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "backgroundColor": "#09090C"
+    },
+    "android": {
+      "package": "com.joeyyfrench.resteavivre",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./public/favicon-48.png",
+      "name": "Reste à vivre",
+      "shortName": "Reste à vivre",
+      "lang": "fr",
+      "themeColor": "#09090C",
+      "backgroundColor": "#09090C",
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      "expo-sqlite",
+      "@react-native-community/datetimepicker",
+      "expo-font"
+    ],
+    "owner": "joeyyfrenchs-team",
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/14f7e01f-76a5-42d4-a038-fea9793ecb09"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "14f7e01f-76a5-42d4-a038-fea9793ecb09"
+      }
+    },
+    "backgroundColor": "#09090C"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "Reste à vivre",
+  "short_name": "Reste à vivre",
+  "description": "Ton budget, tes pockets et ce que tu peux dépenser jusqu’à la paie.",
+  "lang": "fr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#09090C",
+  "theme_color": "#09090C",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
