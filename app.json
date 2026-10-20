@@ -32,6 +32,18 @@
       "expo-status-bar",
       "expo-sqlite",
       "@react-native-community/datetimepicker"
-    ]
+    ],
+    "owner": "joeyyfrenchs-team",
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/14f7e01f-76a5-42d4-a038-fea9793ecb09"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "14f7e01f-76a5-42d4-a038-fea9793ecb09"
+      }
+    }
   }
 }
