@@ -1,81 +1,32 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { useApp } from '../../store/AppStore';
 import { DemoBanner, DetectionNotice, HeaderActions } from '../../components/common';
+import { HeroCard } from '../../components/HeroCard';
+import { envelopes } from '../../domain/stats';
 import {
-  Banner, Btn, Card, DateBadge, Empty, Eyebrow, KV, List, ListRow, Meter, Pill, Row, Screen, Section, Sub, Tag, Txt, tap,
+  Banner, Btn, Card, CategoryIcon, DateBadge, Empty, KV, List, ListRow, Meter, Row, Screen, Section, Sub, Tag, Txt,
 } from '../../ui/kit';
-import { useColors } from '../../ui/theme';
 import { WISH_HOURS, addTx, compute, wishReady } from '../../domain/engine';
-import { DAY, dateShort, dateTime, eur, r2 } from '../../domain/format';
+import { DAY, dateTime, eur, r2 } from '../../domain/format';
 import type { Wish } from '../../domain/types';
 
 export default function Home() {
   const { state, openSheet, tick } = useApp();
-  const c = useColors();
-  const [showCalc, setShowCalc] = useState(false);
   void tick;
   const k = compute(state);
   const waiting = state.wishes.filter((w) => w.status === 'waiting').sort((a, b) => a.added.localeCompare(b.added));
   const dropped = r2(state.wishes.filter((w) => w.status === 'dropped').reduce((a, w) => a + w.price, 0));
   const upcoming = k.upcoming.slice(0, 4);
-  // How much of the living budget until payday is covered by what is spendable
-  const coverage = k.lifeNeed > 0 ? Math.max(0, k.free) / k.lifeNeed : 1;
 
   return (
     <Screen title="Reste à vivre" right={<HeaderActions />}>
       <DemoBanner />
       <DetectionNotice />
 
-      <Card style={{ padding: 20, gap: 14 }}>
-        <Eyebrow>{`Dépensable d’ici le ${dateShort(k.pay)} · ${k.days} jour${k.days > 1 ? 's' : ''}`}</Eyebrow>
-        <Txt
-          style={{ fontSize: 56, lineHeight: 60, fontWeight: '800', letterSpacing: -1.5, fontVariant: ['tabular-nums'], color: k.free < 0 ? c.danger : c.ink }}
-          adjustsFontSizeToFit
-          numberOfLines={1}
-          accessibilityLabel={`Reste à vivre ${eur(k.free)}`}
-        >
-          {eur(k.free)}
-        </Txt>
-        <Txt muted>
-          soit <Txt style={{ fontWeight: '700' }}>{eur(Math.max(0, k.perDay))}</Txt> par jour
-        </Txt>
-        <Pill tone={k.status.tone}>{k.status.text}</Pill>
-        <View style={{ gap: 6 }}>
-          <Meter value={Math.min(1, coverage)} color={k.status.tone === 'bad' ? 'danger' : k.status.tone === 'warn' ? 'warn' : 'ok'} />
-          <Sub>{`Budget de vie prévu d’ici la paie : ${eur(k.lifeNeed)}`}</Sub>
-        </View>
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ expanded: showCalc }}
-          onPress={() => {
-            tap();
-            setShowCalc((v) => !v);
-          }}
-        >
-          <Txt color="accent" style={{ fontSize: 14, fontWeight: '700' }}>{showCalc ? 'Masquer le calcul' : 'Voir le calcul'}</Txt>
-        </Pressable>
-        {showCalc ? (
-          <View style={{ gap: 10, borderTopWidth: 1, borderTopColor: c.line, paddingTop: 12 }}>
-            <KV label="Compte courant" value={eur(state.balance)} />
-            <KV label="À payer d’ici la paie" value={`− ${eur(k.need)}`} />
-            <KV label="Déjà mis de côté (pocket Factures)" value={`+ ${eur(Math.min(k.need, state.pockets.bills))}`} />
-            <View style={{ borderTopWidth: 1, borderTopColor: c.line, paddingTop: 10 }}>
-              <KV bold label="Reste à vivre" value={eur(k.free)} />
-            </View>
-            {k.short > 0 ? (
-              <Banner tone="danger">{`La pocket Factures ne couvre pas tout : ${eur(k.short)} sont pris sur le courant.`}</Banner>
-            ) : null}
-          </View>
-        ) : null}
-
-        <Row wrap={false}>
-          <Btn grow title="Noter une dépense" onPress={() => openSheet({ kind: 'tx' })} />
-          <Btn grow variant="ghost" title="Une envie ?" onPress={() => openSheet({ kind: 'wish' })} />
-        </Row>
-      </Card>
+      <HeroCard />
+      <EnvelopeAlerts />
 
       <Section
         title="À venir"
@@ -169,5 +120,30 @@ function WishRow({ w, free }: { w: Wish; free: number }) {
         <Btn small variant="ghost" title="Laisser tomber" onPress={() => set('dropped', `Bien joué, ${eur(w.price)} gardés.`)} />
       </Row>
     </ListRow>
+  );
+}
+
+/** Envelopes at 80 % or more of their limit for this pay cycle. */
+function EnvelopeAlerts() {
+  const { state } = useApp();
+  const hot = envelopes(state).filter((e) => e.state !== 'ok');
+  if (!hot.length) return null;
+  return (
+    <Pressable accessibilityRole="button" onPress={() => router.navigate('/budget')}>
+      <Card style={{ gap: 10 }}>
+        {hot.map((e) => (
+          <View key={e.key} style={{ gap: 6 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <CategoryIcon category={e.key} size={28} />
+              <Txt style={{ flex: 1, fontSize: 14, fontWeight: '600' }}>{e.label}</Txt>
+              <Txt color={e.state === 'over' ? 'danger' : 'warn'} style={{ fontSize: 13, fontWeight: '700' }}>
+                {e.state === 'over' ? `Dépassé de ${eur(-e.left)}` : `Plus que ${eur(e.left)}`}
+              </Txt>
+            </View>
+            <Meter value={e.share} color={e.state === 'over' ? 'danger' : 'warn'} height={6} />
+          </View>
+        ))}
+      </Card>
+    </Pressable>
   );
 }

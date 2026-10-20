@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useApp } from '../../store/AppStore';
 import { DemoBanner, HeaderActions } from '../../components/common';
-import { Card, Empty, KV, Meter, Screen, Section, StatTile, Txt, Tip, tap } from '../../ui/kit';
+import { Card, CategoryIcon, Empty, KV, Meter, Screen, Section, StatTile, Txt, Tip, tap } from '../../ui/kit';
 import { BarPairs, Donut, Lines } from '../../ui/charts';
 import { CATEGORY_COLOR, useColors } from '../../ui/theme';
 import { debtFreeEta, debtsLeft, previewPayday } from '../../domain/engine';
@@ -76,8 +76,8 @@ export default function Stats() {
               <View style={{ gap: 12 }}>
                 {spend.slices.map((x) => (
                   <View key={x.key} style={{ gap: 5 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: CATEGORY_COLOR[x.key] }} />
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <CategoryIcon category={x.key} size={28} />
                       <Txt style={{ flex: 1, fontSize: 14 }}>{x.label}</Txt>
                       <Txt muted style={{ fontSize: 13, fontVariant: ['tabular-nums'] }}>{`${Math.round(x.share * 100)} %`}</Txt>
                       <Txt style={{ fontSize: 14, fontWeight: '700', fontVariant: ['tabular-nums'], minWidth: 84, textAlign: 'right' }}>{eur(x.amount)}</Txt>

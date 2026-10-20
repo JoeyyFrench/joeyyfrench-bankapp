@@ -4,6 +4,7 @@ import { useApp, type SheetSpec } from '../../store/AppStore';
 import {
   BillForm, ChargeForm, CushionForm, DebtForm, DebtPayForm, GoalForm, GoalItemForm, GoalMoveForm, MoveForm, TxForm, WishForm, WithdrawForm,
 } from './forms';
+import { EnvelopeForm, QuickAddForm } from './quick';
 
 export function SheetHost() {
   const { sheet, closeSheet } = useApp();
@@ -33,6 +34,8 @@ function SheetContent({ spec }: { spec: SheetSpec }) {
     case 'withdraw': return <WithdrawForm />;
     case 'debt': return <DebtForm id={spec.id} />;
     case 'debtPay': return <DebtPayForm debtId={spec.debtId} />;
+    case 'quick': return <QuickAddForm />;
+    case 'envelope': return <EnvelopeForm category={spec.key} />;
   }
 }
 

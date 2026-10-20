@@ -133,7 +133,7 @@ export function compute(s: State) {
   else if (free < lifeNeed) status = { tone: 'warn', text: `Serré : ${eur(lifeNeed - free)} de moins que ton budget de vie` };
   else if (free < lifeNeed * 1.25) status = { tone: 'ok', text: 'Ça passe, sans plus' };
   else status = { tone: 'ok', text: `Tu es large : ${eur(free - lifeNeed)} de marge` };
-  return { t, pay, days, upcoming, need, short, free, perDay: free / days, lifeNeed, status };
+  return { t, pay, days, cycleDays, upcoming, need, short, free, perDay: free / days, lifeNeed, status };
 }
 
 /** Monthly charges + unpaid bills for a cycle (yearly ones are provisioned separately). */

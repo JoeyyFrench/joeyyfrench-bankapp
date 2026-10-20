@@ -48,7 +48,7 @@ export function migrate(raw: any): State {
   st.lastSync = st.lastSync || new Date().toISOString();
   st.pockets = { bills: 0, cushion: 0, savings: 0, debts: 0, ...(st.pockets || {}) };
   const d = demoState().settings;
-  st.settings = { ...d, ...(st.settings || {}) };
+  st.settings = { ...d, envelopes: {}, ...(st.settings || {}) };
   st.demo = !!st.demo;
   return st as State;
 }

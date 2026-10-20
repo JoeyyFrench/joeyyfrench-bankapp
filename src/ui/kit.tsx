@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
+  LayoutAnimation, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
   type StyleProp, type TextInputProps, type TextStyle, type ViewStyle,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Haptics from 'expo-haptics';
-import { alpha, radius, space, useColors, type ColorName } from './theme';
+import { CATEGORY_COLOR, CATEGORY_SYMBOL, alpha, fonts, radius, space, useColors, type ColorName } from './theme';
 import { dateFull, parseYmd, ymd } from '../domain/format';
 import { SymbolView, type SFSymbol } from 'expo-symbols';
 
@@ -25,7 +25,7 @@ export function Screen({ title, right, children }: { title: string; right?: Reac
       keyboardShouldPersistTaps="handled"
     >
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: space.md, paddingTop: space.sm }}>
-        <Text style={{ fontSize: 34, fontWeight: '800', color: c.ink, letterSpacing: -0.5, flexShrink: 1 }} accessibilityRole="header">
+        <Text style={{ fontSize: 34, fontFamily: fonts.display, color: c.ink, letterSpacing: -0.8, flexShrink: 1 }} accessibilityRole="header">
           {title}
         </Text>
         {right}
@@ -39,7 +39,7 @@ export function Section({ title, meta, children, action }: { title: string; meta
   return (
     <View style={{ gap: space.sm + 2 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: space.sm }}>
-        <Txt style={{ fontSize: 20, fontWeight: '700' }} accessibilityRole="header">{title}</Txt>
+        <Txt style={{ fontSize: 20, fontFamily: fonts.display, letterSpacing: -0.3 }} accessibilityRole="header">{title}</Txt>
         {meta ? <Txt muted style={{ fontSize: 13, fontVariant: ['tabular-nums'] }}>{meta}</Txt> : null}
         {action}
       </View>
@@ -426,6 +426,7 @@ export function Expandable({
         accessibilityLabel={`${title}${amount ? `, ${amount}` : ''}`}
         onPress={() => {
           tap();
+          LayoutAnimation.configureNext(LayoutAnimation.create(220, 'easeInEaseOut', 'opacity'));
           setOpen((o) => !o);
         }}
         style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, opacity: pressed ? 0.7 : 1 })}
@@ -435,7 +436,7 @@ export function Expandable({
           <Txt style={{ fontSize: 16, fontWeight: '700' }}>{title}</Txt>
           {summary ? (typeof summary === 'string' ? <Txt muted style={{ fontSize: 12.5 }}>{summary}</Txt> : summary) : null}
         </View>
-        {amount ? <Txt style={{ fontSize: 18, fontWeight: '800', fontVariant: ['tabular-nums'] }}>{amount}</Txt> : null}
+        {amount ? <Txt style={{ fontSize: 18, fontFamily: fonts.display, fontVariant: ['tabular-nums'] }}>{amount}</Txt> : null}
         <Text style={{ color: c.faint, fontSize: 18, transform: [{ rotate: open ? '90deg' : '0deg' }] }}>›</Text>
       </Pressable>
       {open ? <View style={{ paddingHorizontal: 16, paddingBottom: 16, gap: 12 }}>{children}</View> : null}
@@ -448,10 +449,49 @@ export function StatTile({ label, value, sub, color }: { label: string; value: s
   return (
     <View style={{ flexGrow: 1, flexBasis: '45%', backgroundColor: c.surface, borderRadius: radius.lg, padding: 14, gap: 4, borderWidth: 1, borderColor: '#22222A', borderCurve: 'continuous' }}>
       <Txt muted style={{ fontSize: 12, fontWeight: '600', letterSpacing: 0.4, textTransform: 'uppercase' }}>{label}</Txt>
-      <Txt color={color} style={{ fontSize: 22, fontWeight: '800', fontVariant: ['tabular-nums'], letterSpacing: -0.3 }} adjustsFontSizeToFit numberOfLines={1}>
+      <Txt color={color} style={{ fontSize: 22, fontFamily: fonts.display, fontVariant: ['tabular-nums'], letterSpacing: -0.3 }} adjustsFontSizeToFit numberOfLines={1}>
         {value}
       </Txt>
       {sub ? <Txt muted style={{ fontSize: 12 }}>{sub}</Txt> : null}
     </View>
   );
+}
+
+/** Round category badge with its SF Symbol. */
+export function CategoryIcon({ category, size = 32 }: { category: string; size?: number }) {
+  const color = CATEGORY_COLOR[category] ?? '#5C5C68';
+  return (
+    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: alpha(color, 0.18), alignItems: 'center', justifyContent: 'center' }}>
+      {Platform.OS === 'ios' ? (
+        <SymbolView name={(CATEGORY_SYMBOL[category] ?? 'circle.fill') as SFSymbol} size={size * 0.48} tintColor={color} />
+      ) : (
+        <View style={{ width: size * 0.35, height: size * 0.35, borderRadius: 3, backgroundColor: color }} />
+      )}
+    </View>
+  );
+}
+
+/** Smoothly counts from the previous value to the new one. */
+export function useCountUp(value: number, duration = 650) {
+  const [shown, setShown] = useState(value);
+  const from = useRef(value);
+  useEffect(() => {
+    const start = from.current;
+    if (start === value) return;
+    const t0 = Date.now();
+    let raf = 0;
+    const step = () => {
+      const p = Math.min(1, (Date.now() - t0) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setShown(start + (value - start) * eased);
+      if (p < 1) raf = requestAnimationFrame(step);
+      else from.current = value;
+    };
+    raf = requestAnimationFrame(step);
+    return () => {
+      cancelAnimationFrame(raf);
+      from.current = value;
+    };
+  }, [value, duration]);
+  return Math.round(shown * 100) / 100;
 }

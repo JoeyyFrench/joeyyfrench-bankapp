@@ -148,6 +148,8 @@ export interface Settings {
   /** Purchases above this amount are suggested for the 48 h rule */
   wishMin: number;
   autoSubs: boolean;
+  /** Monthly spending limit per variable category (an "envelope") */
+  envelopes: Partial<Record<CategoryKey, number>>;
 }
 
 export interface Pockets {

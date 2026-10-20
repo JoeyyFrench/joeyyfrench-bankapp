@@ -7,7 +7,7 @@ import {
 } from './engine';
 import { detectRecurring, runDetection, merchantKey, detectSuggestions } from './detection';
 import { migrate } from './migrate';
-import { categorize, lastMonths, monthlyFlows, savingsDebtSeries, spendingByCategory } from './stats';
+import { averageSpending, categorize, envelopes, lastMonths, monthlyFlows, savingsDebtSeries, spendingByCategory } from './stats';
 import { r2 } from './format';
 
 test('merchant keys strip bank noise', () => {
@@ -210,4 +210,19 @@ test('payday records a savings and debts snapshot', () => {
   assert.equal(s.history[n].savings, s.pockets.savings);
   assert.equal(s.history[n].debts, debtsLeft(s));
   assert.ok(savingsDebtSeries(s).length >= 2);
+});
+
+test('envelopes compare the current cycle spending to each limit', () => {
+  const s = demoState();
+  runDetection(s);
+  const env = envelopes(s);
+  const courses = env.find((e) => e.key === 'courses')!;
+  const cycle = lastMonths(s, 1)[0];
+  const spent = spendingByCategory(s, cycle.from, cycle.to).slices.find((x) => x.key === 'courses')?.amount ?? 0;
+  assert.equal(courses.spent, spent);
+  assert.equal(courses.left, r2(250 - spent));
+  assert.equal(courses.state, spent > 250 ? 'over' : spent >= 200 ? 'warn' : 'ok');
+  assert.ok(averageSpending(s, 'courses') > 0);
+  s.settings.envelopes = {};
+  assert.deepEqual(envelopes(s), []);
 });

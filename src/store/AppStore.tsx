@@ -6,7 +6,7 @@ import { clone } from '../domain/engine';
 import { runDetection } from '../domain/detection';
 import { migrate } from '../domain/migrate';
 import { demoState } from '../domain/demo';
-import type { State } from '../domain/types';
+import type { CategoryKey, State } from '../domain/types';
 
 const KEY = 'reste-a-vivre/state';
 
@@ -22,7 +22,9 @@ export type SheetSpec =
   | { kind: 'cushion' }
   | { kind: 'withdraw' }
   | { kind: 'debt'; id?: string }
-  | { kind: 'debtPay'; debtId: string };
+  | { kind: 'debtPay'; debtId: string }
+  | { kind: 'quick' }
+  | { kind: 'envelope'; key?: CategoryKey };
 
 interface Store {
   state: State;

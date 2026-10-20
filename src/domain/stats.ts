@@ -141,3 +141,44 @@ export function savingsDebtSeries(s: State) {
   if (!last || last.date !== now) points.push({ date: now, savings: s.pockets.savings, debts: debtsLeft(s) });
   return points.slice(-12);
 }
+
+/* -------------------------------------------------------------- envelopes */
+
+/** Everyday spending that can be capped; housing, subscriptions, bills and debts are handled elsewhere. */
+export const VARIABLE_CATEGORIES: CategoryKey[] = ['courses', 'transport', 'sorties', 'shopping', 'sante', 'autre'];
+
+export type EnvelopeState = 'ok' | 'warn' | 'over';
+
+export interface Envelope {
+  key: CategoryKey;
+  label: string;
+  limit: number;
+  spent: number;
+  left: number;
+  share: number;
+  state: EnvelopeState;
+}
+
+/** Spending against each envelope over the current pay cycle. Warn at 80 %, over above 100 %. */
+export function envelopes(s: State): Envelope[] {
+  const cycle = lastMonths(s, 1)[0];
+  const spend = spendingByCategory(s, cycle.from, cycle.to);
+  return (Object.entries(s.settings.envelopes ?? {}) as [CategoryKey, number][])
+    .filter(([, limit]) => limit > 0)
+    .map(([key, limit]) => {
+      const spent = spend.slices.find((x) => x.key === key)?.amount ?? 0;
+      const share = spent / limit;
+      return {
+        key, label: CATEGORY_LABEL[key], limit, spent, left: r2(limit - spent), share,
+        state: (share > 1 ? 'over' : share >= 0.8 ? 'warn' : 'ok') as EnvelopeState,
+      };
+    })
+    .sort((a, b) => b.share - a.share);
+}
+
+/** Average spending of a category over the last `n` completed pay cycles (to suggest a limit). */
+export function averageSpending(s: State, key: CategoryKey, n = 3) {
+  const cycles = lastMonths(s, n + 1).slice(0, n);
+  const total = cycles.reduce((a, c) => a + (spendingByCategory(s, c.from, c.to).slices.find((x) => x.key === key)?.amount ?? 0), 0);
+  return r2(total / n);
+}

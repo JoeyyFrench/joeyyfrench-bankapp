@@ -59,5 +59,25 @@ export const CATEGORY_COLOR: Record<string, string> = {
   autre: '#5C5C68',
 };
 
+/** SF Symbols per spending category (iOS); a letter is used as fallback elsewhere. */
+export const CATEGORY_SYMBOL: Record<string, string> = {
+  logement: 'house.fill',
+  courses: 'cart.fill',
+  transport: 'fuelpump.fill',
+  sorties: 'fork.knife',
+  abonnements: 'repeat',
+  factures: 'doc.text.fill',
+  sante: 'cross.case.fill',
+  shopping: 'bag.fill',
+  dettes: 'creditcard.fill',
+  autre: 'square.grid.2x2.fill',
+};
+
+/** Display face for figures and titles (loaded in the root layout); falls back to the system font. */
+export const fonts = {
+  display: 'SpaceGrotesk_700Bold',
+  displayMedium: 'SpaceGrotesk_500Medium',
+};
+
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 28 };
 export const radius = { sm: 8, md: 12, lg: 16, xl: 20 };

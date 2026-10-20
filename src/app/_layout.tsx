@@ -1,4 +1,7 @@
 import React from 'react';
+import { View } from 'react-native';
+import { useFonts, SpaceGrotesk_500Medium, SpaceGrotesk_700Bold } from '@expo-google-fonts/space-grotesk';
+import { Fab } from '../components/Fab';
 import { StatusBar } from 'expo-status-bar';
 import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
 import { AppProvider } from '../store/AppStore';
@@ -20,6 +23,8 @@ const theme = {
 };
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({ SpaceGrotesk_500Medium, SpaceGrotesk_700Bold });
+  if (!fontsLoaded) return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
   return (
     <ThemeProvider value={theme}>
       <AppProvider>
@@ -28,6 +33,7 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="compte" options={{ presentation: 'modal' }} />
         </Stack>
+        <Fab />
         <SheetHost />
         <Toast />
       </AppProvider>
