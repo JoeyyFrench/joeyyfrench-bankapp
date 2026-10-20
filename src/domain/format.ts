@@ -9,6 +9,8 @@ export const uid = () => Math.random().toString(36).slice(2, 10);
 
 const eurFmt = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 export const eur = (n: number) => eurFmt.format(n);
+/** Whole euros for small tiles ("151 €"). */
+export const eurShort = (n: number) => eur(Math.round(n)).replace(/,00(?=\s?€)/, '');
 
 /**
  * Parses "12,50", "12.50", "1 234,56", "1.234,56" or "1,234.56". When both separators appear,

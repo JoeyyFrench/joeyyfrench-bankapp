@@ -13,7 +13,7 @@ export default function Budget() {
   const openBills = state.bills.filter((b) => !b.paid).length;
   const hot = envelopes(state).filter((e) => e.state !== 'ok').length;
   return (
-    <Screen title="Budget" right={<HeaderActions />}>
+    <Screen eyebrow="Ce qui sort chaque mois" title="Budget" right={<HeaderActions />}>
       <DemoBanner />
       <Segmented
         options={[

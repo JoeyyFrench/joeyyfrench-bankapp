@@ -4,8 +4,8 @@ import { useApp } from '../store/AppStore';
 import { router } from 'expo-router';
 import { DemoBanner } from '../components/common';
 import { categorize, CATEGORY_LABEL, isSpending } from '../domain/stats';
-import { Banner, Btn, DateBadge, Empty, IconButton, List, ListRow, Row, Screen, Section, Sub, Txt } from '../ui/kit';
-import { useColors } from '../ui/theme';
+import { Banner, Btn, Card, DateBadge, Empty, IconButton, List, ListRow, Row, Screen, Section, Sub, Txt } from '../ui/kit';
+import { geist, useColors } from '../ui/theme';
 import { total } from '../domain/engine';
 import { amountInput, eur, parseAmount, parseYmd } from '../domain/format';
 import type { PocketKey, Settings } from '../domain/types';
@@ -25,21 +25,21 @@ export default function Compte() {
   const mins = Math.round((now - new Date(state.lastSync).getTime()) / 60000);
 
   return (
-    <Screen title="Compte" right={<IconButton symbol="xmark" fallback="✕" label="Fermer" onPress={() => router.back()} />}>
+    <Screen modal title="Compte" right={<IconButton symbol="xmark" fallback="✕" label="Fermer" onPress={() => router.back()} />}>
       <DemoBanner />
-      <View style={{ backgroundColor: c.accentDeep, borderRadius: 20, padding: 20, gap: 14, borderCurve: 'continuous', borderWidth: 1, borderColor: c.accentDark }}>
+      <Card tint={c.accent} style={{ padding: 20, gap: 14 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <Txt style={{ color: c.accentInk, fontSize: 13 }}>Compte courant</Txt>
-          <View style={{ borderWidth: 1, borderColor: c.accentInk, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 2, opacity: 0.85 }}>
-            <Txt style={{ color: c.accentInk, fontSize: 11.5 }}>{state.demo ? 'bunq · sandbox' : 'bunq'}</Txt>
+          <Txt style={{ color: c.ink, fontSize: 13 }}>Compte courant</Txt>
+          <View style={{ borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 2, opacity: 0.85 }}>
+            <Txt style={{ color: c.ink, fontSize: 11.5 }}>{state.demo ? 'bunq · sandbox' : 'bunq'}</Txt>
           </View>
         </View>
-        <Txt style={{ color: c.accentInk, fontSize: 34, fontWeight: '800', letterSpacing: -0.5, fontVariant: ['tabular-nums'] }}>{eur(state.balance)}</Txt>
+        <Txt style={{ color: c.ink, fontSize: 34, fontWeight: '800', letterSpacing: -0.5, fontVariant: ['tabular-nums'] }}>{eur(state.balance)}</Txt>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <Txt style={{ color: c.accentInk, fontSize: 13 }}>{mins < 1 ? "Synchronisé à l'instant" : `Synchronisé il y a ${mins < 60 ? `${mins} min` : `${Math.round(mins / 60)} h`}`}</Txt>
-          <Txt style={{ color: c.accentInk, fontSize: 13 }}>Total {eur(total(state))}</Txt>
+          <Txt style={{ color: c.ink, fontSize: 13 }}>{mins < 1 ? "Synchronisé à l'instant" : `Synchronisé il y a ${mins < 60 ? `${mins} min` : `${Math.round(mins / 60)} h`}`}</Txt>
+          <Txt style={{ color: c.ink, fontSize: 13 }}>Total {eur(total(state))}</Txt>
         </View>
-      </View>
+      </Card>
 
       <Section title="Opérations" action={<Btn small title="Ajouter" onPress={() => openSheet({ kind: 'tx' })} />}>
         <List>
@@ -77,6 +77,7 @@ export default function Compte() {
 
       <Section title="Réglages">
         <List>
+          <NameSetting />
           <NumberSetting k="payDay" label="Jour de paie" hint="Le salaire tombe ce jour-là" integer min={1} max={31} />
           <NumberSetting k="salary" label="Salaire net" hint="Réparti le jour de paie" />
           <NumberSetting k="otherIncome" label="Autres revenus réguliers" hint="Aides, activité… par mois" />
@@ -161,7 +162,38 @@ function NumberSetting({ k, label, hint, integer, min = 0, max }: { k: NumericKe
         accessibilityLabel={label}
         style={{
           width: 110, textAlign: 'right', borderWidth: StyleSheet.hairlineWidth * 2, borderColor: c.line, borderRadius: 10,
-          paddingHorizontal: 10, paddingVertical: 8, backgroundColor: c.bg, color: c.ink, fontSize: 16, fontVariant: ['tabular-nums'],
+          paddingHorizontal: 10, paddingVertical: 8, backgroundColor: c.bg, color: c.ink, fontSize: 16, fontVariant: ['tabular-nums'], fontFamily: geist['600'],
+        }}
+      />
+    </SettingRow>
+  );
+}
+
+function NameSetting() {
+  const { state, update } = useApp();
+  const c = useColors();
+  const [draft, setDraft] = useState<string | null>(null);
+  const commit = () => {
+    if (draft === null) return;
+    const v = draft.trim().slice(0, 24);
+    setDraft(null);
+    if (v !== state.settings.name) update((s) => { s.settings.name = v; }, 'Enregistré');
+  };
+  return (
+    <SettingRow label="Prénom" hint="Pour te saluer sur l’accueil">
+      <TextInput
+        value={draft ?? state.settings.name}
+        onChangeText={setDraft}
+        onEndEditing={commit}
+        onSubmitEditing={commit}
+        autoCapitalize="words"
+        returnKeyType="done"
+        placeholder="Ton prénom"
+        placeholderTextColor={c.faint}
+        accessibilityLabel="Prénom"
+        style={{
+          width: 140, textAlign: 'right', borderWidth: StyleSheet.hairlineWidth * 2, borderColor: c.line, borderRadius: 10,
+          paddingHorizontal: 10, paddingVertical: 8, backgroundColor: c.bg, color: c.ink, fontSize: 16, fontFamily: geist['600'],
         }}
       />
     </SettingRow>

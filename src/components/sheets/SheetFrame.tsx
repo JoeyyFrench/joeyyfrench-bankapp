@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, View } from 'react-native';
 import { useApp } from '../../store/AppStore';
 import { useColors } from '../../ui/theme';
-import { Btn, Txt, tap } from '../../ui/kit';
+import { Text, Btn, Txt, tap } from '../../ui/kit';
 
 /**
  * Form sheet frame: Cancel / title / primary action in the header, scrolling content,

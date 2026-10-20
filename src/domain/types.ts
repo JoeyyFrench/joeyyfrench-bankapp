@@ -135,6 +135,8 @@ export interface Notice {
 }
 
 export interface Settings {
+  /** First name used in the greeting (empty = no name) */
+  name: string;
   payDay: number;
   salary: number;
   otherIncome: number;

@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { View } from 'react-native';
 import { useApp } from '../../store/AppStore';
 import { DemoBanner, HeaderActions } from '../../components/common';
-import { Card, CategoryIcon, Empty, KV, Meter, Screen, Section, StatTile, Txt, Tip, tap } from '../../ui/kit';
+import { Card, CategoryIcon, Eyebrow, KV, Meter, PillTabs, Rise, Screen, Section, StatTile, Txt, Tip, useTween } from '../../ui/kit';
 import { BarPairs, Donut, Lines } from '../../ui/charts';
 import { CATEGORY_COLOR, useColors } from '../../ui/theme';
 import { debtFreeEta, debtsLeft, previewPayday } from '../../domain/engine';
 import { lastMonths, monthlyFlows, savingsDebtSeries, spendingByCategory } from '../../domain/stats';
 import { isSubscription } from '../../domain/detection';
-import { eur, monthAbbr, parseYmd, r2 } from '../../domain/format';
+import { eur, eurShort, monthAbbr, parseYmd, r2 } from '../../domain/format';
 
 export default function Stats() {
   const { state } = useApp();
@@ -31,109 +31,120 @@ export default function Stats() {
   const subTotal = r2(subs.reduce((a, x) => a + x.amount, 0));
 
   return (
-    <Screen title="Stats" right={<HeaderActions />}>
+    <Screen eyebrow="Tes chiffres" title="Stats" right={<HeaderActions />}>
       <DemoBanner />
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-        {cycles.map((m, i) => {
-          const on = i === selected;
-          return (
-            <Pressable
-              key={m.key}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: on }}
-              onPress={() => {
-                tap();
-                setSelected(i);
-              }}
-              style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: on ? c.accent : c.surface, borderWidth: 1, borderColor: on ? c.accent : c.line }}
-            >
-              <Text style={{ color: on ? c.accentInk : c.muted, fontWeight: '700', fontSize: 14 }}>
-                {i === cycles.length - 1 ? 'Ce mois-ci' : m.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-      <Tip>{`Du ${shortDate(cycle.from)} au ${shortDate(cycle.to)} : un mois va d’une paie à la suivante.`}</Tip>
+      <Rise order={1} style={{ gap: 10 }}>
+        <PillTabs
+          options={cycles.map((m, i) => ({ value: i, label: i === cycles.length - 1 ? 'Ce mois-ci' : m.label }))}
+          value={selected}
+          onChange={setSelected}
+        />
+        <Tip>{`Du ${shortDate(cycle.from)} au ${shortDate(cycle.to)} : un mois va d’une paie à la suivante.`}</Tip>
+      </Rise>
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-        <StatTile label="Revenus" value={eur(flow.income)} color="ok" />
-        <StatTile label="Dépenses" value={eur(flow.spending)} sub={isCurrent ? 'jusqu’ici' : undefined} />
-        <StatTile label="Reste" value={eur(flow.net)} color={flow.net < 0 ? 'danger' : undefined} sub="revenus − dépenses" />
-        <StatTile label="Taux d’épargne" value={`${rate} %`} color={rate >= 10 ? 'ok' : rate < 0 ? 'danger' : 'warn'} sub="part des revenus gardée" />
-      </View>
+      <Rise order={2} style={{ flexDirection: 'row', gap: 10 }}>
+        <StatTile label="Revenus" value={eurShort(flow.income)} color="ok" />
+        <StatTile label="Dépenses" value={eurShort(flow.spending)} sub={isCurrent ? 'jusqu’ici' : undefined} />
+        <StatTile
+          label="Épargné"
+          value={`${rate} %`}
+          color={rate >= 10 ? 'ok' : rate < 0 ? 'danger' : 'warn'}
+          sub={`${flow.net < 0 ? '− ' : ''}${eurShort(Math.abs(flow.net))} gardés`}
+        />
+      </Rise>
 
-      <Section title="Dépenses par catégorie" meta={eur(spend.total)}>
-        <Card>
-          {spend.slices.length ? (
-            <>
-              <Donut
-                slices={spend.slices.map((x) => ({ value: x.amount, color: CATEGORY_COLOR[x.key] }))}
-                center={eur(spend.total)}
-                centerSub={isCurrent ? 'ce mois-ci' : cycle.label}
-              />
-              <View style={{ gap: 12 }}>
-                {spend.slices.map((x) => (
-                  <View key={x.key} style={{ gap: 5 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                      <CategoryIcon category={x.key} size={28} />
-                      <Txt style={{ flex: 1, fontSize: 14 }}>{x.label}</Txt>
-                      <Txt muted style={{ fontSize: 13, fontVariant: ['tabular-nums'] }}>{`${Math.round(x.share * 100)} %`}</Txt>
-                      <Txt style={{ fontSize: 14, fontWeight: '700', fontVariant: ['tabular-nums'], minWidth: 84, textAlign: 'right' }}>{eur(x.amount)}</Txt>
+      <Rise order={3}>
+        <Section title="Dépenses par catégorie" meta={eur(spend.total)}>
+          <Card style={{ gap: 18 }}>
+            {spend.slices.length ? (
+              <>
+                <Donut
+                  key={cycle.key}
+                  slices={spend.slices.map((x) => ({ value: x.amount, color: CATEGORY_COLOR[x.key] }))}
+                  center={eur(spend.total)}
+                  centerSub={isCurrent ? 'ce mois-ci' : cycle.label}
+                />
+                <View style={{ gap: 14 }}>
+                  {spend.slices.map((x, i) => (
+                    <View key={x.key} style={{ gap: 7 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <CategoryIcon category={x.key} size={30} />
+                        <Txt style={{ flex: 1, fontSize: 14, fontWeight: '500' }}>{x.label}</Txt>
+                        <Txt muted style={{ fontSize: 12.5, fontVariant: ['tabular-nums'] }}>{`${Math.round(x.share * 100)} %`}</Txt>
+                        <Txt style={{ fontSize: 14, fontWeight: '700', fontVariant: ['tabular-nums'], minWidth: 80, textAlign: 'right' }}>{eur(x.amount)}</Txt>
+                      </View>
+                      <BarLine key={cycle.key} share={x.share} color={CATEGORY_COLOR[x.key]} delay={300 + i * 80} />
                     </View>
-                    <View style={{ height: 4, borderRadius: 2, backgroundColor: c.surface2, overflow: 'hidden' }}>
-                      <View style={{ width: `${x.share * 100}%`, height: '100%', backgroundColor: CATEGORY_COLOR[x.key] }} />
-                    </View>
-                  </View>
-                ))}
-              </View>
-              <Tip>Une catégorie se trompe ? Ouvre l’opération dans Compte et choisis la bonne.</Tip>
-            </>
-          ) : (
-            <Empty>Aucune dépense sur cette période.</Empty>
-          )}
-        </Card>
-      </Section>
+                  ))}
+                </View>
+                <Tip>Une catégorie se trompe ? Ouvre l’opération dans Compte et choisis la bonne.</Tip>
+              </>
+            ) : (
+              <Txt muted style={{ fontSize: 14 }}>Aucune dépense sur cette période.</Txt>
+            )}
+          </Card>
+        </Section>
+      </Rise>
 
-      <Section title="Revenus et dépenses" meta="6 mois">
-        <Card>
-          <BarPairs
-            data={flows.map((f) => ({ label: f.label, a: f.income, b: f.spending }))}
-            a={{ name: 'Revenus', color: c.ok }}
-            b={{ name: 'Dépenses', color: c.accent }}
-          />
-          <KV label="Reste moyen par mois (mois terminés)" value={eur(avgNet)} color={avgNet < 0 ? 'danger' : 'ok'} />
-          <KV label="Abonnements et contrats" value={`${eur(subTotal)} / mois · ${eur(subTotal * 12)} / an`} />
-        </Card>
-      </Section>
-
-      <Section title="Épargne et dettes">
-        <Card>
-          {series.length >= 2 ? (
-            <Lines
-              labels={series.map((p, i) => (i === series.length - 1 ? 'auj.' : monthAbbr(parseYmd(p.date))))}
-              series={[
-                { name: 'Épargne bloquée', color: c.save, values: series.map((p) => p.savings) },
-                { name: 'Dettes restantes', color: c.debt, values: series.map((p) => p.debts) },
-              ]}
+      <Rise order={4}>
+        <Section title="Revenus et dépenses" meta="6 mois">
+          <Card>
+            <BarPairs
+              data={flows.map((f) => ({ label: f.label, a: f.income, b: f.spending }))}
+              a={{ name: 'Revenus', color: c.ok }}
+              b={{ name: 'Dépenses', color: c.accent }}
             />
-          ) : (
-            <Tip>Le graphique se remplit à chaque jour de paie.</Tip>
-          )}
-          <KV label="Épargne bloquée" value={eur(state.pockets.savings)} />
-          <KV label="Prochain versement (estimé)" value={`+ ${eur(pv.toSavings)}`} color="ok" />
-          <KV label="Dettes restantes" value={eur(debtsLeft(state))} />
-          {firstDebt > 0 && lastPoint ? (
-            <View style={{ gap: 6 }}>
-              <KV label="Déjà remboursé depuis le début du suivi" value={eur(Math.max(0, firstDebt - lastPoint.debts))} />
-              <Meter value={1 - lastPoint.debts / firstDebt} color="debt" />
-            </View>
+            <KV label="Reste moyen par mois (mois terminés)" value={eur(avgNet)} color={avgNet < 0 ? 'danger' : 'ok'} />
+            <KV label="Abonnements et contrats" value={`${eur(subTotal)} / mois · ${eur(subTotal * 12)} / an`} />
+          </Card>
+        </Section>
+      </Rise>
+
+      <Rise order={5}>
+        <Section title="Épargne et dettes">
+          {debtsLeft(state) > 0 || firstDebt > 0 ? (
+            <Card tint={c.debt}>
+              <Eyebrow color="debt">Libre de dettes</Eyebrow>
+              <Txt style={{ fontSize: 26, fontWeight: '800', letterSpacing: -0.8 }}>{debtsLeft(state) > 0 ? debtFreeEta(state, pv.toDebtExtra) : 'C’est fait'}</Txt>
+              {firstDebt > 0 && lastPoint ? (
+                <>
+                  <Txt muted style={{ fontSize: 13 }}>{`Déjà remboursé ${eur(Math.max(0, firstDebt - lastPoint.debts))} · reste ${eur(debtsLeft(state))}`}</Txt>
+                  <Meter value={1 - lastPoint.debts / firstDebt} color="debt" to="#FFD08A" />
+                </>
+              ) : (
+                <Txt muted style={{ fontSize: 13 }}>{`Reste ${eur(debtsLeft(state))}`}</Txt>
+              )}
+            </Card>
           ) : null}
-          <KV label="Libre de dettes vers" value={debtFreeEta(state, pv.toDebtExtra)} bold />
-        </Card>
-      </Section>
+          <Card>
+            {series.length >= 2 ? (
+              <Lines
+                labels={series.map((p, i) => (i === series.length - 1 ? 'auj.' : monthAbbr(parseYmd(p.date))))}
+                series={[
+                  { name: 'Épargne bloquée', color: c.save, values: series.map((p) => p.savings) },
+                  { name: 'Dettes restantes', color: c.debt, values: series.map((p) => p.debts) },
+                ]}
+              />
+            ) : (
+              <Tip>Le graphique se remplit à chaque jour de paie.</Tip>
+            )}
+            <KV label="Épargne bloquée" value={eur(state.pockets.savings)} />
+            <KV label="Prochain versement (estimé)" value={`+ ${eur(pv.toSavings)}`} color="ok" />
+          </Card>
+        </Section>
+      </Rise>
     </Screen>
+  );
+}
+
+/** Thin bar that grows to its share. */
+function BarLine({ share, color, delay }: { share: number; color: string; delay: number }) {
+  const v = useTween(share, 900, delay);
+  return (
+    <View style={{ height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+      <View style={{ width: `${v * 100}%`, height: '100%', borderRadius: 2, backgroundColor: color }} />
+    </View>
   );
 }
 

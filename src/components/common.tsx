@@ -32,7 +32,8 @@ export function SyncPill() {
 
 /** Sync + account buttons shown in the header of every tab. */
 export function HeaderActions() {
-  const { update } = useApp();
+  const { state, update } = useApp();
+  const initial = state.settings.name?.trim().charAt(0).toUpperCase();
   return (
     <Row wrap={false} style={{ gap: 8, marginBottom: 4 }}>
       <IconButton
@@ -41,7 +42,7 @@ export function HeaderActions() {
         label="Synchroniser le compte"
         onPress={() => update((s) => { s.lastSync = new Date().toISOString(); }, 'Compte à jour (simulation)')}
       />
-      <IconButton symbol="person.crop.circle" fallback="☰" label="Compte et réglages" onPress={() => router.push('/compte')} />
+      <IconButton symbol="person.fill" fallback="☰" text={initial || undefined} label="Compte et réglages" onPress={() => router.push('/compte')} />
     </Row>
   );
 }
@@ -75,7 +76,7 @@ export function DetectionNotice() {
   if (!n) return null;
   const k = n.added.length;
   return (
-    <Card style={{ borderWidth: 1, borderColor: c.accent }}>
+    <Card tint={c.accent}>
       <Eyebrow>Paiements récurrents détectés</Eyebrow>
       {n.added.map((a, i) => (
         <KV key={i} label={a.label} value={`${eur(a.amount)} / mois`} />
@@ -99,7 +100,7 @@ export function DetectionNotice() {
             update((s) => {
               s.notices = s.notices.filter((x) => x.id !== n.id);
             });
-            router.navigate('/charges');
+            router.navigate('/budget');
           }}
         />
         <Btn small variant="ghost" title="OK" onPress={() => update((s) => { s.notices = s.notices.filter((x) => x.id !== n.id); })} />

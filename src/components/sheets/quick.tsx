@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useApp } from '../../store/AppStore';
 import { SheetFrame } from './SheetFrame';
-import { AmountField, Banner, Btn, CategoryIcon, Field, Row, Segmented, Txt, tap } from '../../ui/kit';
+import { Text, AmountField, Banner, Btn, CategoryIcon, Field, Row, Segmented, Txt, tap } from '../../ui/kit';
 import { alpha, fonts, useColors } from '../../ui/theme';
 import { addTx } from '../../domain/engine';
 import { CATEGORY_KEYS, CATEGORY_LABEL, VARIABLE_CATEGORIES, averageSpending, categorize, envelopes } from '../../domain/stats';

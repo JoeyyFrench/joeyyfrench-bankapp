@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useApp } from '../../store/AppStore';
 import { SheetFrame } from './SheetFrame';
-import { AmountField, Banner, Btn, DateField, Field, KV, Segmented, Txt, Tip } from '../../ui/kit';
+import { Text, AmountField, Banner, Btn, DateField, Field, KV, Segmented, Txt, Tip } from '../../ui/kit';
 import { CATEGORY_COLOR, useColors } from '../../ui/theme';
 import {
   HOLD_HOURS, WISH_HOURS, WITHDRAW_REASONS, addTx, buildMoveItems, countPaydays, deleteCharge, deleteGoal, deleteTx,

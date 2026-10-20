@@ -15,7 +15,7 @@ Faite avec [Expo](https://expo.dev) (React Native + TypeScript).
 - **Envies (règle des 48 h)** : un achat plaisir attend 48 h avant que tu décides.
 - **Stats** : dépenses par catégorie, revenus et dépenses sur 6 mois, évolution de l'épargne et des dettes. Un « mois » va d'une paie à la suivante.
 
-Thème sombre aux couleurs de Malkidow. Quatre onglets : Accueil, Stats, Pockets, Budget ; le compte et les réglages s'ouvrent depuis l'icône en haut à droite.
+Design « Nuit » : fond presque noir, cartes en verre, police Geist, accent rouge (couleurs inspirées de Malkidow). Quatre onglets dans une barre flottante avec le bouton + au centre : Accueil (jauge du reste à vivre), Stats, Pockets (grille de pockets), Budget. Le compte et les réglages s'ouvrent depuis l'initiale en haut à droite, le jour de paie depuis Pockets. Les animations sont coupées si « Réduire les animations » est activé sur l'iPhone.
 
 Les données sont pour l'instant **des données d'exemple** (faux compte bunq). Tout est enregistré sur le téléphone.
 
@@ -58,7 +58,7 @@ src/
   components/   bannières, toast, formulaires (feuilles modales)
   domain/       moteur de calcul pur, testé : reste à vivre, jour de paie, objectifs, dettes, détection des abonnements, stats
   store/        état de l'appli + sauvegarde locale (expo-sqlite/kv-store)
-  ui/           thème Malkidow, composants et graphiques (react-native-svg)
+  ui/           thème « Nuit », composants, animations et graphiques (react-native-svg)
 ```
 
 ## Prochaine étape : connexion bunq

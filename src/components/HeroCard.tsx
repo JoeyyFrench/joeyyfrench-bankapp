@@ -1,46 +1,49 @@
 import React, { useState } from 'react';
-import { LayoutAnimation, Pressable, StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Defs, G, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
+import { LayoutAnimation, Pressable, View } from 'react-native';
+import Svg, { Circle, Defs, G, LinearGradient, RadialGradient, Stop } from 'react-native-svg';
 import { useApp } from '../store/AppStore';
-import { Banner, KV, Pill, Txt, tap, useCountUp } from '../ui/kit';
-import { colors, fonts } from '../ui/theme';
-import { compute } from '../domain/engine';
-import { dateShort, eur } from '../domain/format';
+import { Banner, Breathe, Card, KV, Rise, StatTile, Txt, tap, useCountUp, useTween } from '../ui/kit';
+import { accentGradient, colors } from '../ui/theme';
+import { compute, previewPayday } from '../domain/engine';
+import { dateShort, eur, eurShort } from '../domain/format';
 
-/** Two concentric rings: outer = living budget covered, inner = time left in the pay cycle. */
-function Rings({ money, time, tone, daysLeft }: { money: number; time: number; tone: string; daysLeft: number }) {
-  const size = 104;
-  const ring = (r: number, value: number, color: string, w: number) => {
-    const circ = 2 * Math.PI * r;
-    const v = Math.max(0, Math.min(1, value));
-    return (
-      <G rotation={-90} origin={`${size / 2}, ${size / 2}`}>
-        <Circle cx={size / 2} cy={size / 2} r={r} stroke="rgba(255,255,255,0.08)" strokeWidth={w} fill="none" />
-        {v > 0 ? (
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={r}
-            stroke={color}
-            strokeWidth={w}
-            fill="none"
-            strokeLinecap="round"
-            strokeDasharray={`${circ * v} ${circ}`}
-          />
-        ) : null}
-      </G>
-    );
-  };
+const SIZE = 244;
+const R = 108;
+const CIRC = 2 * Math.PI * R;
+const ARC = CIRC * 0.75; // 270°
+
+
+/** 270° gauge: how much of the monthly living budget is still available. */
+function Gauge({ value, children, label }: { value: number; children: React.ReactNode; label: string }) {
+  const p = useTween(Math.max(0, Math.min(1, value)), 1600, 250);
   return (
-    <View style={{ width: size, height: size }} accessibilityLabel={`Budget de vie couvert à ${Math.round(Math.min(1, money) * 100)} %, ${daysLeft} jours avant la paie`}>
-      <Svg width={size} height={size}>
-        {ring(46, money, tone, 9)}
-        {ring(32, time, 'rgba(242,242,245,0.55)', 7)}
+    <View style={{ height: SIZE, alignItems: 'center', justifyContent: 'center' }} accessibilityLabel={label}>
+      <Breathe style={{ position: 'absolute', width: 320, height: 320, top: (SIZE - 320) / 2 }}>
+        <Svg width={320} height={320}>
+          <Defs>
+            <RadialGradient id="halo" cx="50%" cy="50%" r="50%">
+              <Stop offset="0" stopColor="#E0263D" stopOpacity="0.3" />
+              <Stop offset="1" stopColor="#E0263D" stopOpacity="0" />
+            </RadialGradient>
+          </Defs>
+          <Circle cx={160} cy={160} r={160} fill="url(#halo)" />
+        </Svg>
+      </Breathe>
+      <Svg width={SIZE} height={SIZE} style={{ position: 'absolute' }}>
+        <Defs>
+          <LinearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor={accentGradient[0]} />
+            <Stop offset="1" stopColor={accentGradient[1]} />
+          </LinearGradient>
+        </Defs>
+        <G rotation={135} origin={`${SIZE / 2}, ${SIZE / 2}`}>
+          <Circle cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={10} strokeLinecap="round" strokeDasharray={`${ARC} ${CIRC}`} />
+          {p > 0.004 ? (
+            <Circle cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none" stroke="url(#ring)" strokeWidth={10} strokeLinecap="round" strokeDasharray={`${ARC * p} ${CIRC}`} />
+          ) : null}
+        </G>
       </Svg>
-      <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]} pointerEvents="none">
-        <Text style={{ color: colors.ink, fontFamily: fonts.display, fontSize: 20 }}>{daysLeft}</Text>
-        <Text style={{ color: colors.muted, fontSize: 10, marginTop: -2 }}>{daysLeft > 1 ? 'jours' : 'jour'}</Text>
-      </View>
+      {children}
     </View>
   );
 }
@@ -49,78 +52,73 @@ export function HeroCard() {
   const { state } = useApp();
   const [showCalc, setShowCalc] = useState(false);
   const k = compute(state);
+  const pv = previewPayday(state);
   const shown = useCountUp(k.free);
-  const tone = k.status.tone === 'bad' ? colors.danger : k.status.tone === 'warn' ? colors.warn : colors.ok;
-  const coverage = k.lifeNeed > 0 ? Math.max(0, k.free) / k.lifeNeed : 1;
+  const life = state.settings.lifeBudget;
+  const share = life > 0 ? Math.max(0, k.free) / life : 1;
+  const toneColor = k.status.tone === 'bad' ? 'danger' : k.status.tone === 'warn' ? 'warn' : 'ok';
+  const toneWord = k.free < 0 ? 'ça ne passe pas' : k.free < k.lifeNeed ? 'serré' : k.free < k.lifeNeed * 1.25 ? 'ça passe' : 'large';
+  const toggle = () => {
+    tap();
+    LayoutAnimation.configureNext(LayoutAnimation.create(240, 'easeInEaseOut', 'opacity'));
+    setShowCalc((v) => !v);
+  };
 
   return (
-    <View style={{ borderRadius: 26, overflow: 'hidden', borderWidth: 1, borderColor: '#3A1219', borderCurve: 'continuous' }}>
-      <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
-        <Defs>
-          <LinearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor="#3A0D16" />
-            <Stop offset="0.55" stopColor="#1A0B0F" />
-            <Stop offset="1" stopColor="#0E0E12" />
-          </LinearGradient>
-          <RadialGradient id="glow" cx="90%" cy="0%" r="70%">
-            <Stop offset="0" stopColor={colors.accent} stopOpacity="0.45" />
-            <Stop offset="1" stopColor={colors.accent} stopOpacity="0" />
-          </RadialGradient>
-        </Defs>
-        <Rect width="100%" height="100%" fill="url(#bg)" />
-        <Rect width="100%" height="100%" fill="url(#glow)" />
-      </Svg>
-
-      <View style={{ padding: 20, gap: 14 }}>
-        <Text style={{ color: 'rgba(242,242,245,0.7)', fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' }}>
-          {`Dépensable d’ici le ${dateShort(k.pay)}`}
-        </Text>
-
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <View style={{ flex: 1, gap: 4 }}>
-            <Text
-              style={{ color: k.free < 0 ? colors.danger : colors.ink, fontFamily: fonts.display, fontSize: 46, letterSpacing: -1.5, fontVariant: ['tabular-nums'] }}
-              adjustsFontSizeToFit
-              numberOfLines={1}
-              accessibilityLabel={`Reste à vivre ${eur(k.free)}`}
+    <>
+      <Rise order={1}>
+        <Pressable
+          onPress={toggle}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: showCalc }}
+          accessibilityHint="Affiche le détail du calcul"
+        >
+          <Gauge value={share} label={`Il te reste ${Math.round(Math.min(1, share) * 100)} % de ton budget de vie du mois`}>
+            <View style={{ alignItems: 'center', gap: 2, marginTop: -8, maxWidth: 190 }}>
+              <Txt muted style={{ fontSize: 11, fontWeight: '600', letterSpacing: 1.4, textTransform: 'uppercase' }}>Reste à vivre</Txt>
+              <Txt
+                style={{ fontSize: 34, fontWeight: '800', letterSpacing: -1.4, fontVariant: ['tabular-nums'], color: k.free < 0 ? colors.danger : colors.ink }}
+                adjustsFontSizeToFit
+                numberOfLines={1}
+                accessibilityLabel={`Reste à vivre ${eur(k.free)}`}
+              >
+                {eur(shown)}
+              </Txt>
+              <Txt style={{ fontSize: 13, color: colors.soft }}>{`${eur(Math.max(0, k.perDay))} par jour`}</Txt>
+              <Txt color="accent" style={{ fontSize: 12, fontWeight: '600', marginTop: 4 }}>{showCalc ? 'Masquer le calcul' : 'Le calcul'}</Txt>
+            </View>
+            <View
+              style={{
+                position: 'absolute', bottom: 4, borderRadius: 999, paddingHorizontal: 11, paddingVertical: 5,
+                backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+              }}
             >
-              {eur(shown)}
-            </Text>
-            <Text style={{ color: colors.muted, fontSize: 15 }}>
-              soit <Text style={{ color: colors.ink, fontWeight: '700' }}>{eur(Math.max(0, k.perDay))}</Text> par jour
-            </Text>
-          </View>
-          <Rings money={coverage} time={k.days / k.cycleDays} tone={tone} daysLeft={k.days} />
-        </View>
+              <Txt style={{ fontSize: 12, fontWeight: '600' }}>
+                {k.days <= 0 ? 'Paie aujourd’hui' : `${k.days} jour${k.days > 1 ? 's' : ''} avant la paie`}
+              </Txt>
+            </View>
+          </Gauge>
+        </Pressable>
+      </Rise>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-          <Pill tone={k.status.tone}>{k.status.text}</Pill>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ expanded: showCalc }}
-            hitSlop={8}
-            onPress={() => {
-              tap();
-              LayoutAnimation.configureNext(LayoutAnimation.create(220, 'easeInEaseOut', 'opacity'));
-              setShowCalc((v) => !v);
-            }}
-          >
-            <Text style={{ color: colors.accent, fontSize: 14, fontWeight: '700' }}>{showCalc ? 'Masquer' : 'Le calcul'}</Text>
-          </Pressable>
-        </View>
+      <Rise order={2} style={{ flexDirection: 'row', gap: 10 }}>
+        <StatTile label="À payer" value={eurShort(k.need)} sub={k.short > 0 ? `manque ${eurShort(k.short)}` : 'couvert'} subColor={k.short > 0 ? 'danger' : 'ok'} />
+        <StatTile label="Budget de vie" value={eurShort(k.lifeNeed)} sub={toneWord} subColor={toneColor} />
+        <StatTile label="Épargne" value={`+ ${eurShort(pv.toSavings)}`} sub={`le ${dateShort(k.pay)}`} />
+      </Rise>
 
-        {showCalc ? (
-          <View style={{ gap: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', paddingTop: 12 }}>
-            <KV label="Compte courant" value={eur(state.balance)} />
-            <KV label="À payer d’ici la paie" value={`− ${eur(k.need)}`} />
-            <KV label="Déjà mis de côté (pocket Factures)" value={`+ ${eur(Math.min(k.need, state.pockets.bills))}`} />
-            <KV bold label="Reste à vivre" value={eur(k.free)} />
-            <KV label="Budget de vie prévu d’ici la paie" value={eur(k.lifeNeed)} />
-            {k.short > 0 ? <Banner tone="danger">{`La pocket Factures ne couvre pas tout : ${eur(k.short)} sont pris sur le courant.`}</Banner> : null}
-            <Txt muted style={{ fontSize: 12 }}>Anneau extérieur : part de ton budget de vie couverte. Anneau intérieur : temps restant avant la paie.</Txt>
-          </View>
-        ) : null}
-      </View>
-    </View>
+      {showCalc ? (
+        <Card>
+          <Txt color={toneColor} style={{ fontSize: 14, fontWeight: '600' }}>{k.status.text}</Txt>
+          <KV label="Compte courant" value={eur(state.balance)} />
+          <KV label="À payer d’ici la paie" value={`− ${eur(k.need)}`} />
+          <KV label="Déjà mis de côté (pocket Factures)" value={`+ ${eur(Math.min(k.need, state.pockets.bills))}`} />
+          <KV bold label="Reste à vivre" value={eur(k.free)} />
+          <KV label="Budget de vie prévu d’ici la paie" value={eur(k.lifeNeed)} />
+          {k.short > 0 ? <Banner tone="danger">{`La pocket Factures ne couvre pas tout : ${eur(k.short)} sont pris sur le courant.`}</Banner> : null}
+          <Txt muted style={{ fontSize: 12 }}>{`La jauge montre la part de ton budget de vie du mois (${eur(life)}) qu’il te reste.`}</Txt>
+        </Card>
+      ) : null}
+    </>
   );
 }

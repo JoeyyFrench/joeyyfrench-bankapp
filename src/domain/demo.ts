@@ -21,7 +21,7 @@ export function demoState(): State {
     demo: true,
     clock: null,
     settings: {
-      payDay: 28, salary: 2000, otherIncome: 0, lifeBudget: 550, marginShare: 60, debtShare: 70, cushion: 300, wishMin: 80, autoSubs: true,
+      name: 'Joey', payDay: 28, salary: 2000, otherIncome: 0, lifeBudget: 550, marginShare: 60, debtShare: 70, cushion: 300, wishMin: 80, autoSubs: true,
       envelopes: { courses: 250, sorties: 120, transport: 120, shopping: 60 },
     },
     balance: 612.45,
